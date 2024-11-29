@@ -18,6 +18,7 @@ type UserController struct {
 	Db  *gorm.DB
 }
 
+// PostLogin 登录
 func (c *UserController) PostLogin(user model.User) mvc.Result {
 	log.Println("[登录注册] 用户", user.Username, "登录")
 	if service.CheckPass(user, *c.Db) != nil {
@@ -47,6 +48,8 @@ func (c *UserController) PostLogin(user model.User) mvc.Result {
 		Text: tokenString,
 	}
 }
+
+// PostRegister 注册
 func (c *UserController) PostRegister(user model.User) mvc.Result {
 	log.Println("[登录注册] 用户", user.Username, "注册")
 	var tmp model.User
@@ -86,7 +89,33 @@ func (c *UserController) PostRegister(user model.User) mvc.Result {
 
 	log.Println("[登录注册] 用户", user.Username, "注册成功")
 	return mvc.Response{
-		Code: iris.StatusOK,
+		Code: iris.StatusCreated,
 		Text: tokenString,
+	}
+}
+
+// GetBy 获取用户对象(无密码)
+func (c *UserController) GetBy(username string) mvc.Result {
+	var user model.User
+	c.Db.Where("username=?", username).Find(&user)
+	user.Password = ""
+	return mvc.Response{
+		Code:   iris.StatusOK,
+		Object: user,
+	}
+}
+
+func (c *UserController) Put(user model.User) mvc.Result {
+	// TODO 更新用户对象
+	return mvc.Response{
+		Code: iris.StatusNoContent,
+	}
+}
+
+// GetStars 获取用户收藏
+func (c *UserController) GetStars() mvc.Result {
+	// TODO 查询用户收藏的内容
+	return mvc.Response{
+		Code: iris.StatusOK,
 	}
 }
