@@ -2,6 +2,7 @@ package env
 
 import "os"
 
+// GetEnv 获取环境变量
 func GetEnv(key string, value string) string {
 	env, err := os.LookupEnv(key)
 	if !err {
@@ -10,6 +11,7 @@ func GetEnv(key string, value string) string {
 	return env
 }
 
+// GetJWTKey 获取jwt密钥
 func GetJWTKey() []byte {
 	return []byte("PaintingExchange")
 }

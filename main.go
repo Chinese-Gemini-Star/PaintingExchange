@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "PaintingExchange/cmd/docs"
+	_ "PaintingExchange/docs"
 	"PaintingExchange/internal/controller"
 	"PaintingExchange/internal/env"
 	"PaintingExchange/internal/model"
@@ -16,19 +16,20 @@ import (
 	"log"
 )
 
-// @Title 绘画交流平台
-// @Version 1.0
-// @Description 绘画交流平台的后端API文档
+// @title 绘画交流平台
+// @version 1.0
+// @description 绘画交流平台的后端API文档
 
-// @SecurityDefinitions.jwt BearerAuth
-// @In header
-// @Name Authorization
-// @Description JWT token用于用户认证，格式为 "Bearer <token>"
+// @securityDefinitions.apikey jwt
+// @in header
+// @name Bearer
 
-// @host 0.0.0.0:8880
+// @host localhost:8880
 // @BasePath /
 func main() {
 	app := iris.New()
+
+	// 允许跨域
 	app.UseRouter(cors.New(cors.Options{AllowedOrigins: []string{"*"}}))
 
 	// swaggerAPI界面
@@ -53,7 +54,7 @@ func main() {
 	// 绑定依赖和路由
 	mvc.Configure(app, func(application *mvc.Application) {
 		application.Register(db)
-		application.Party("/user").Handle(new(controller.UserController))
+		application.Party("/user").Handle(new(controller.AuthController))
 	})
 
 	if err := app.Listen(":8880"); err != nil {

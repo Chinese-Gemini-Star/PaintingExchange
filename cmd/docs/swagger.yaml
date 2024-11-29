@@ -1,8 +1,0 @@
-basePath: /
-info:
-  contact: {}
-  description: 绘画交流平台的后端API文档
-  title: 绘画交流平台
-  version: "1.0"
-paths: {}
-swagger: "2.0"
