@@ -34,7 +34,7 @@ func (c *AuthController) PostLogin(user model.User) mvc.Result {
 	log.Println("[登录注册] 用户", user.Username, "登录")
 
 	// 验证密码
-	if service.CheckPass(user, *c.Db) != nil {
+	if !service.CheckPass(user, *c.Db) {
 		log.Println("[登录注册] 用户", user.Username, "密码错误")
 		return mvc.Response{
 			Code: iris.StatusForbidden,
@@ -53,6 +53,7 @@ func (c *AuthController) PostLogin(user model.User) mvc.Result {
 		log.Println("[登录注册] 用户", user.Username, "jwt签发失败", err)
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
+			Text: iris.StatusText(iris.StatusInternalServerError),
 		}
 	}
 
@@ -92,6 +93,7 @@ func (c *AuthController) PostRegister(user model.User) mvc.Result {
 		log.Println("[登录注册] 用户", user.Username, "密码加密失败")
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
+			Text: iris.StatusText(iris.StatusInternalServerError),
 		}
 	} else {
 		user.Password = string(password)
@@ -111,6 +113,7 @@ func (c *AuthController) PostRegister(user model.User) mvc.Result {
 		log.Println("[登录注册] 用户", user.Username, "jwt签发失败", err)
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
+			Text: iris.StatusText(iris.StatusInternalServerError),
 		}
 	}
 

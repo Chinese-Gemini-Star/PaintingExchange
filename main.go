@@ -5,6 +5,7 @@ import (
 	"PaintingExchange/internal/controller"
 	"PaintingExchange/internal/env"
 	"PaintingExchange/internal/model"
+	"PaintingExchange/internal/service"
 	"fmt"
 	"github.com/iris-contrib/middleware/cors"
 	"github.com/iris-contrib/swagger"
@@ -20,9 +21,9 @@ import (
 // @version 1.0
 // @description 绘画交流平台的后端API文档
 
-// @securityDefinitions.apikey jwt
+// @securityDefinitions.apikey BearerAuth
 // @in header
-// @name Bearer
+// @name Authorization
 
 // @host localhost:8880
 // @BasePath /
@@ -30,7 +31,10 @@ func main() {
 	app := iris.New()
 
 	// 允许跨域
-	app.UseRouter(cors.New(cors.Options{AllowedOrigins: []string{"*"}}))
+	app.UseRouter(cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
+	}))
 
 	// swaggerAPI界面
 	swaggerUI := swagger.Handler(swaggerFiles.Handler,
@@ -55,6 +59,7 @@ func main() {
 	mvc.Configure(app, func(application *mvc.Application) {
 		application.Register(db)
 		application.Party("/user").Handle(new(controller.AuthController))
+		application.Party("/user", service.JWTMiddleware).Handle(new(controller.UserController))
 	})
 
 	if err := app.Listen(":8880"); err != nil {

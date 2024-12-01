@@ -9,6 +9,60 @@
     "host": "localhost:8880",
     "basePath": "/",
     "paths": {
+        "/user": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "允许已登录的用户更新自己的信息，包括密码。如果没有提供密码，密码保持不变。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "更新用户信息",
+                "parameters": [
+                    {
+                        "description": "用户信息",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "用户信息更新成功，无返回内容"
+                    },
+                    "401": {
+                        "description": "未授权，用户未登录或会话失效",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "禁止操作，尝试修改非自己的信息",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/user/login": {
             "post": {
                 "description": "用户通过用户名和密码登录，成功后返回 JWT Token",
@@ -100,6 +154,49 @@
                     }
                 }
             }
+        },
+        "/user/{username}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "根据用户名获取用户详细信息(无密码)，需要JWT验证",
+                "tags": [
+                    "User"
+                ],
+                "summary": "获取指定用户名的用户对象(无密码)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户名",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "用户对象(无密码)",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "用户不存在",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -131,9 +228,9 @@
         }
     },
     "securityDefinitions": {
-        "jwt": {
+        "BearerAuth": {
             "type": "apiKey",
-            "name": "Bearer",
+            "name": "Authorization",
             "in": "header"
         }
     }
