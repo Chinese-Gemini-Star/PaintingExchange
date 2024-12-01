@@ -53,7 +53,7 @@ func (c *AuthController) PostLogin(user model.User) mvc.Result {
 		log.Println("[登录注册] 用户", user.Username, "jwt签发失败", err)
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
-			Text: iris.StatusText(iris.StatusInternalServerError),
+			Text: err.Error(),
 		}
 	}
 
@@ -93,7 +93,7 @@ func (c *AuthController) PostRegister(user model.User) mvc.Result {
 		log.Println("[登录注册] 用户", user.Username, "密码加密失败")
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
-			Text: iris.StatusText(iris.StatusInternalServerError),
+			Text: err.Error(),
 		}
 	} else {
 		user.Password = string(password)
@@ -113,7 +113,7 @@ func (c *AuthController) PostRegister(user model.User) mvc.Result {
 		log.Println("[登录注册] 用户", user.Username, "jwt签发失败", err)
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
-			Text: iris.StatusText(iris.StatusInternalServerError),
+			Text: err.Error(),
 		}
 	}
 

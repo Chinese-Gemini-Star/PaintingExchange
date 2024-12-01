@@ -54,7 +54,7 @@ func (c *UserController) GetBy(username string) mvc.Result {
 // @Produce json
 // @Param user body model.User true "用户信息"
 // @Success 204 {object} nil "用户信息更新成功，无返回内容"
-// @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Failure 401 {object} string "未授权错误"
 // @Failure 403 {object} string "禁止操作，尝试修改非自己的信息"
 // @Failure 500 {object} string "服务器内部错误"
 // @Router /user [put]
@@ -89,7 +89,7 @@ func (c *UserController) Put(user model.User) mvc.Result {
 			log.Println("用户", user.Username, "修改密码加密失败")
 			return mvc.Response{
 				Code: iris.StatusInternalServerError,
-				Text: iris.StatusText(iris.StatusInternalServerError),
+				Text: err.Error(),
 			}
 		} else {
 			user.Password = string(password)
