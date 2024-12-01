@@ -1,0 +1,9 @@
+version: '3.9'
+services:
+
+  mongodb:
+    image: bitnami/mongodb
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"

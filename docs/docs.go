@@ -15,6 +15,167 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/image": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "创建图片对象,需要先调用 /image/file [POST] 接口,获取到图片对象(包括图片id,作者用户名以及图片各个大小的地址),然后将其他元数据补充入此对象,再强求",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "image"
+                ],
+                "summary": "创建图片元信息",
+                "parameters": [
+                    {
+                        "description": "图片对象,在/image/file [POST] 接口的返回值上补充元数据所得",
+                        "name": "image",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Image"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "图片ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权，用户未登录或会话失效",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/image/file": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "上传图片文件，返回图片对象(包括图片id,作者用户名和地址).",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "image"
+                ],
+                "summary": "上传图片文件",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "图片文件",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "图片上传成功，返回图片对象",
+                        "schema": {
+                            "$ref": "#/definitions/model.Image"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权，用户未登录或会话失效",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/image/{imageID}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "根据提供的图片ID，查找并返回该图片对象",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "image"
+                ],
+                "summary": "获取指定ID的图片对象",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "图片ID",
+                        "name": "imageID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "图片对象",
+                        "schema": {
+                            "$ref": "#/definitions/model.Image"
+                        }
+                    },
+                    "400": {
+                        "description": "请求错误，图片ID无效",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权，用户未登录或会话失效",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "未找到图片，图片ID不存在",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/user": {
             "put": {
                 "security": [
@@ -49,7 +210,7 @@ const docTemplate = `{
                         "description": "用户信息更新成功，无返回内容"
                     },
                     "401": {
-                        "description": "未授权，用户未登录或会话失效",
+                        "description": "未授权错误",
                         "schema": {
                             "type": "string"
                         }
@@ -206,6 +367,46 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "model.Image": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "description": "图片作者用户名",
+                    "type": "string"
+                },
+                "bigURI": {
+                    "description": "大图地址",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "图片id(UUID)",
+                    "type": "string"
+                },
+                "intro": {
+                    "description": "图片简介",
+                    "type": "string"
+                },
+                "label": {
+                    "description": "图片标签",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "like": {
+                    "description": "收藏人数",
+                    "type": "integer"
+                },
+                "mediumURI": {
+                    "description": "中图地址",
+                    "type": "string"
+                },
+                "smallURI": {
+                    "description": "小图地址",
+                    "type": "string"
+                }
+            }
+        },
         "model.User": {
             "description": "用户",
             "type": "object",

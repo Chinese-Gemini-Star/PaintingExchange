@@ -15,3 +15,7 @@ func GetEnv(key string, value string) string {
 func GetJWTKey() []byte {
 	return []byte("PaintingExchange")
 }
+
+func GetImgDir() string {
+	return "assert/images"
+}

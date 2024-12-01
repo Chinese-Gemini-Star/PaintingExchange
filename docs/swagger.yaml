@@ -1,5 +1,34 @@
 basePath: /
 definitions:
+  model.Image:
+    properties:
+      auth:
+        description: 图片作者用户名
+        type: string
+      bigURI:
+        description: 大图地址
+        type: string
+      id:
+        description: 图片id(UUID)
+        type: string
+      intro:
+        description: 图片简介
+        type: string
+      label:
+        description: 图片标签
+        items:
+          type: string
+        type: array
+      like:
+        description: 收藏人数
+        type: integer
+      mediumURI:
+        description: 中图地址
+        type: string
+      smallURI:
+        description: 小图地址
+        type: string
+    type: object
   model.User:
     description: 用户
     properties:
@@ -27,6 +56,108 @@ info:
   title: 绘画交流平台
   version: "1.0"
 paths:
+  /image:
+    post:
+      consumes:
+      - application/json
+      description: 创建图片对象,需要先调用 /image/file [POST] 接口,获取到图片对象(包括图片id,作者用户名以及图片各个大小的地址),然后将其他元数据补充入此对象,再强求
+      parameters:
+      - description: 图片对象,在/image/file [POST] 接口的返回值上补充元数据所得
+        in: body
+        name: image
+        required: true
+        schema:
+          $ref: '#/definitions/model.Image'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 图片ID
+          schema:
+            type: string
+        "401":
+          description: 未授权，用户未登录或会话失效
+          schema:
+            type: string
+        "500":
+          description: 服务器内部错误
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 创建图片元信息
+      tags:
+      - image
+  /image/{imageID}:
+    get:
+      consumes:
+      - application/json
+      description: 根据提供的图片ID，查找并返回该图片对象
+      parameters:
+      - description: 图片ID
+        in: path
+        name: imageID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 图片对象
+          schema:
+            $ref: '#/definitions/model.Image'
+        "400":
+          description: 请求错误，图片ID无效
+          schema:
+            type: string
+        "401":
+          description: 未授权，用户未登录或会话失效
+          schema:
+            type: string
+        "404":
+          description: 未找到图片，图片ID不存在
+          schema:
+            type: string
+        "500":
+          description: 服务器内部错误
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 获取指定ID的图片对象
+      tags:
+      - image
+  /image/file:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传图片文件，返回图片对象(包括图片id,作者用户名和地址).
+      parameters:
+      - description: 图片文件
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 图片上传成功，返回图片对象
+          schema:
+            $ref: '#/definitions/model.Image'
+        "401":
+          description: 未授权，用户未登录或会话失效
+          schema:
+            type: string
+        "500":
+          description: 服务器内部错误
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 上传图片文件
+      tags:
+      - image
   /user:
     put:
       consumes:
@@ -45,7 +176,7 @@ paths:
         "204":
           description: 用户信息更新成功，无返回内容
         "401":
-          description: 未授权，用户未登录或会话失效
+          description: 未授权错误
           schema:
             type: string
         "403":
