@@ -98,7 +98,78 @@ paths:
       summary: 创建图片元信息
       tags:
       - image
+    put:
+      consumes:
+      - application/json
+      description: 修改自己上传的图片信息(仅简介和标签允许修改,其他均以数据库已有信息为准)
+      parameters:
+      - description: 图片信息
+        in: body
+        name: image
+        required: true
+        schema:
+          $ref: '#/definitions/model.Image'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 图片信息更新成功，返回更新后的图片信息
+          schema:
+            $ref: '#/definitions/model.Image'
+        "400":
+          description: 请求数据异常
+          schema:
+            type: string
+        "401":
+          description: 未授权，用户未登录或会话失效
+          schema:
+            type: string
+        "500":
+          description: 服务器内部错误
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 修改图片信息
+      tags:
+      - image
   /image/{imageID}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除自己上传的指定ID的图片
+      parameters:
+      - description: 图片ID
+        in: path
+        name: imageID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 图片删除成功，无返回内容
+        "400":
+          description: 请求错误
+          schema:
+            type: string
+        "401":
+          description: 未授权，用户未登录或会话失效
+          schema:
+            type: string
+        "404":
+          description: 未找到图片，图片ID不存在
+          schema:
+            type: string
+        "500":
+          description: 服务器内部错误
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 删除指定ID的图片
+      tags:
+      - image
     get:
       consumes:
       - application/json
@@ -201,7 +272,7 @@ paths:
       - BearerAuth: []
       summary: 更新用户信息
       tags:
-      - User
+      - user
   /user/{username}:
     get:
       description: 根据用户名获取用户详细信息(无密码)，需要JWT验证
@@ -228,7 +299,7 @@ paths:
       - BearerAuth: []
       summary: 获取指定用户名的用户对象(无密码)
       tags:
-      - User
+      - user
   /user/login:
     post:
       consumes:

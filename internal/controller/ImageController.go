@@ -121,6 +121,7 @@ func (c *ImageController) Post(image model.Image) mvc.Result {
 			Text: err.Error(),
 		}
 	} else {
+		log.Println("图片创建成功")
 		return mvc.Response{
 			Code:   iris.StatusCreated,
 			Object: image,
@@ -186,6 +187,7 @@ func (c *ImageController) PostFile() mvc.Result {
 		}
 	}
 
+	log.Println("图片文件保存成功")
 	// 封装成对象返回
 	var image model.Image
 	image.ID = imageID
@@ -198,13 +200,134 @@ func (c *ImageController) PostFile() mvc.Result {
 }
 
 // Put 修改图片
-func (c *ImageController) Put(image model.Image) {
-	// TODO
+// @Summary 修改图片信息
+// @Description 修改自己上传的图片信息(仅简介和标签允许修改,其他均以数据库已有信息为准)
+// @Tags image
+// @Accept json
+// @Produce json
+// @Param image body model.Image true "图片信息"
+// @Success 201 {object} model.Image "图片信息更新成功，返回更新后的图片信息"
+// @Failure 400 {object} string "请求数据异常"
+// @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Failure 500 {object} string "服务器内部错误"
+// @Router /image [put]
+// @Security BearerAuth
+func (c *ImageController) Put(image model.Image) mvc.Result {
+	images := c.Mg.Database("PaintingExchange").Collection("Images")
+
+	// 查询用户名
+	loginUser, err := c.Ctx.User().GetRaw()
+	if err != nil {
+		return mvc.Response{
+			Code: iris.StatusUnauthorized,
+			Text: iris.StatusText(iris.StatusUnauthorized),
+		}
+	}
+	loginUserName := loginUser.(iris.SimpleUser).Username
+	log.Println("用户", loginUserName, "修改图片", image.ID)
+
+	// 查询原图片对象
+	prevImageRes := c.GetBy(image.ID).(mvc.Response)
+	if prevImageRes.Code != iris.StatusOK {
+		log.Println("图片不存在")
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "图片不存在",
+		}
+	}
+	prevImage := prevImageRes.Object.(model.Image)
+
+	// 验证是否为本人操作
+	if loginUserName != prevImage.Auth {
+		log.Println("图片非用户", loginUserName, "本人上传")
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "图片文件非本人上传",
+		}
+	}
+
+	// 更新图片信息
+	prevImage.Intro = image.Intro
+	prevImage.Label = image.Label
+	filter := bson.D{{"id", prevImage.ID}}
+	update := bson.D{{"$set", prevImage}}
+	if _, err := images.UpdateOne(nil, filter, update); err != nil {
+		log.Println("图片更新失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	} else {
+		log.Println("图片更新成功")
+		return mvc.Response{
+			Code:   iris.StatusCreated,
+			Object: prevImage,
+		}
+	}
 }
 
 // DeleteBy 删除图片
-func (c *ImageController) DeleteBy(imageID string) {
-	// TODO
+// @Summary 删除指定ID的图片
+// @Description 删除自己上传的指定ID的图片
+// @Tags image
+// @Accept json
+// @Produce json
+// @Param imageID path string true "图片ID"
+// @Success 204 {object} nil "图片删除成功，无返回内容"
+// @Failure 400 {object} string "请求错误"
+// @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Failure 404 {object} string "未找到图片，图片ID不存在"
+// @Failure 500 {object} string "服务器内部错误"
+// @Router /image/{imageID} [delete]
+// @Security BearerAuth
+func (c *ImageController) DeleteBy(imageID string) mvc.Result {
+	images := c.Mg.Database("PaintingExchange").Collection("Images")
+
+	// 查询用户名
+	loginUser, err := c.Ctx.User().GetRaw()
+	if err != nil {
+		return mvc.Response{
+			Code: iris.StatusUnauthorized,
+			Text: iris.StatusText(iris.StatusUnauthorized),
+		}
+	}
+	loginUserName := loginUser.(iris.SimpleUser).Username
+	log.Println("用户", loginUserName, "删除图片", imageID)
+
+	// 查询原图片对象
+	prevImageRes := c.GetBy(imageID).(mvc.Response)
+	if prevImageRes.Code != iris.StatusOK {
+		log.Println("图片不存在")
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "图片不存在",
+		}
+	}
+	prevImage := prevImageRes.Object.(model.Image)
+
+	// 验证是否为本人操作
+	if loginUserName != prevImage.Auth {
+		log.Println("图片非用户", loginUserName, "本人上传")
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "图片文件非本人上传",
+		}
+	}
+
+	// 删除图片信息
+	filter := bson.D{{"id", prevImage.ID}}
+	if _, err := images.DeleteOne(nil, filter); err != nil {
+		log.Println("图片删除失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	} else {
+		log.Println("图片删除成功")
+		return mvc.Response{
+			Code: iris.StatusNoContent,
+		}
+	}
 }
 
 // getFilenameWithoutExt 获取纯文件名

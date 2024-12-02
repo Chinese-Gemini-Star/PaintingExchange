@@ -16,6 +16,61 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/image": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "修改自己上传的图片信息(仅简介和标签允许修改,其他均以数据库已有信息为准)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "image"
+                ],
+                "summary": "修改图片信息",
+                "parameters": [
+                    {
+                        "description": "图片信息",
+                        "name": "image",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Image"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "图片信息更新成功，返回更新后的图片信息",
+                        "schema": {
+                            "$ref": "#/definitions/model.Image"
+                        }
+                    },
+                    "400": {
+                        "description": "请求数据异常",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权，用户未登录或会话失效",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -180,6 +235,62 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "删除自己上传的指定ID的图片",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "image"
+                ],
+                "summary": "删除指定ID的图片",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "图片ID",
+                        "name": "imageID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "图片删除成功，无返回内容"
+                    },
+                    "400": {
+                        "description": "请求错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权，用户未登录或会话失效",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "未找到图片，图片ID不存在",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/user": {
@@ -197,7 +308,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "User"
+                    "user"
                 ],
                 "summary": "更新用户信息",
                 "parameters": [
@@ -337,7 +448,7 @@ const docTemplate = `{
                 ],
                 "description": "根据用户名获取用户详细信息(无密码)，需要JWT验证",
                 "tags": [
-                    "User"
+                    "user"
                 ],
                 "summary": "获取指定用户名的用户对象(无密码)",
                 "parameters": [
