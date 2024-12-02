@@ -22,7 +22,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "创建图片对象,需要先调用 /image/file [POST] 接口,获取到图片对象(包括图片id,作者用户名以及图片各个大小的地址),然后将其他元数据补充入此对象,再强求",
+                "description": "创建图片对象,需要先调用 /image/file [POST] 接口,获取到图片对象(包括图片id,作者用户名以及图片各个大小的地址),然后将其他元数据补充入此对象,再请求",
                 "consumes": [
                     "application/json"
                 ],
@@ -46,7 +46,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "图片ID",
+                        "description": "图片对象",
+                        "schema": {
+                            "$ref": "#/definitions/model.Image"
+                        }
+                    },
+                    "400": {
+                        "description": "请求数据异常",
                         "schema": {
                             "type": "string"
                         }
@@ -372,15 +378,18 @@ const docTemplate = `{
             "properties": {
                 "auth": {
                     "description": "图片作者用户名",
-                    "type": "string"
+                    "type": "string",
+                    "example": "test"
                 },
                 "bigURI": {
                     "description": "大图地址",
-                    "type": "string"
+                    "type": "string",
+                    "example": "assert/images/big_68c8d808-54f7-4cfc-94c9-015416033dc9.jpg"
                 },
                 "id": {
                     "description": "图片id(UUID)",
-                    "type": "string"
+                    "type": "string",
+                    "example": "68c8d808-54f7-4cfc-94c9-015416033dc9"
                 },
                 "intro": {
                     "description": "图片简介",
@@ -395,15 +404,18 @@ const docTemplate = `{
                 },
                 "like": {
                     "description": "收藏人数",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 0
                 },
                 "mediumURI": {
                     "description": "中图地址",
-                    "type": "string"
+                    "type": "string",
+                    "example": "TODO"
                 },
                 "smallURI": {
                     "description": "小图地址",
-                    "type": "string"
+                    "type": "string",
+                    "example": "TODO"
                 }
             }
         },

@@ -4,12 +4,15 @@ definitions:
     properties:
       auth:
         description: 图片作者用户名
+        example: test
         type: string
       bigURI:
         description: 大图地址
+        example: assert/images/big_68c8d808-54f7-4cfc-94c9-015416033dc9.jpg
         type: string
       id:
         description: 图片id(UUID)
+        example: 68c8d808-54f7-4cfc-94c9-015416033dc9
         type: string
       intro:
         description: 图片简介
@@ -21,12 +24,15 @@ definitions:
         type: array
       like:
         description: 收藏人数
+        example: 0
         type: integer
       mediumURI:
         description: 中图地址
+        example: TODO
         type: string
       smallURI:
         description: 小图地址
+        example: TODO
         type: string
     type: object
   model.User:
@@ -60,7 +66,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 创建图片对象,需要先调用 /image/file [POST] 接口,获取到图片对象(包括图片id,作者用户名以及图片各个大小的地址),然后将其他元数据补充入此对象,再强求
+      description: 创建图片对象,需要先调用 /image/file [POST] 接口,获取到图片对象(包括图片id,作者用户名以及图片各个大小的地址),然后将其他元数据补充入此对象,再请求
       parameters:
       - description: 图片对象,在/image/file [POST] 接口的返回值上补充元数据所得
         in: body
@@ -72,7 +78,11 @@ paths:
       - application/json
       responses:
         "201":
-          description: 图片ID
+          description: 图片对象
+          schema:
+            $ref: '#/definitions/model.Image'
+        "400":
+          description: 请求数据异常
           schema:
             type: string
         "401":
