@@ -19,7 +19,7 @@ type UserController struct {
 // GetBy 获取指定用户名的用户对象(无密码)
 // @Summary 获取指定用户名的用户对象(无密码)
 // @Description 根据用户名获取用户详细信息(无密码)，需要JWT验证
-// @Tags User
+// @Tags user
 // @Param username path string true "用户名"
 // @Success 200 {object} model.User "用户对象(无密码)"
 // @Failure 401 {object} string "未授权错误"
@@ -49,7 +49,7 @@ func (c *UserController) GetBy(username string) mvc.Result {
 // Put 更新用户对象(仅限自己)
 // @Summary 更新用户信息
 // @Description 允许已登录的用户更新自己的信息，包括密码。如果没有提供密码，密码保持不变。
-// @Tags User
+// @Tags user
 // @Accept json
 // @Produce json
 // @Param user body model.User true "用户信息"
