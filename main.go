@@ -67,6 +67,9 @@ func main() {
 	} else {
 		defer mg.Disconnect(nil)
 	}
+	if err := mg.Ping(nil, nil); err != nil {
+		log.Fatalln("mongoDB数据库连接失败", err)
+	}
 
 	// 创建图片缓存目录并绑定路由
 	err = os.MkdirAll(env.GetImgDir(), os.ModePerm)
