@@ -5,7 +5,7 @@ import "time"
 // Image 图片
 // @Description 图片
 type Image struct {
-	ID        string    `json:"id" bson:"id" example:"68c8d808-54f7-4cfc-94c9-015416033dc9"`                               // 图片id(UUID)
+	ID        string    `json:"id" bson:"_id" example:"68c8d808-54f7-4cfc-94c9-015416033dc9"`                              // 图片id(UUID)
 	Auth      string    `json:"auth" bson:"auth" example:"test"`                                                           // 图片作者用户名
 	BigURI    string    `json:"bigURI" bson:"bigURI" example:"assert/images/big_68c8d808-54f7-4cfc-94c9-015416033dc9.jpg"` // 大图地址
 	MediumURI string    `json:"mediumURI" bson:"mediumURI" example:"TODO"`                                                 // 中图地址
