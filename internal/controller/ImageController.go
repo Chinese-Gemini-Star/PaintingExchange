@@ -34,7 +34,6 @@ type ImageController struct {
 // @Success 200 {object} model.Image "图片对象"
 // @Failure 400 {object} string "请求错误，图片ID无效"
 // @Failure 401 {object} string "未授权，用户未登录或会话失效"
-// @Failure 404 {object} string "未找到图片，图片ID不存在"
 // @Failure 500 {object} string "服务器内部错误"
 // @Router /image/{imageID} [get]
 // @Security BearerAuth
@@ -203,7 +202,7 @@ func (c *ImageController) PostFile() mvc.Result {
 
 // Put 修改图片
 // @Summary 修改图片信息
-// @Description 修改自己上传的图片信息(仅简介和标签允许修改,其他均以数据库已有信息为准)
+// @Description 修改自己上传的图片信息(仅标题,简介和标签允许修改,其他均以数据库已有信息为准)
 // @Tags image
 // @Accept json
 // @Produce json
@@ -249,6 +248,7 @@ func (c *ImageController) Put(image model.Image) mvc.Result {
 	}
 
 	// 更新图片信息
+	prevImage.Title = image.Title
 	prevImage.Intro = image.Intro
 	prevImage.Label = image.Label
 	filter := bson.D{{"_id", prevImage.ID}}
@@ -339,7 +339,7 @@ func getFilenameWithoutExt(path string) string {
 	return filenameWithoutExt
 }
 
-// 确认文件是否存在
+// fileExists 确认文件是否存在
 func fileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
@@ -348,6 +348,7 @@ func fileExists(filePath string) bool {
 	return true
 }
 
+// checkImageFile 检查文件地址是否正确
 func checkImageFile(filePath string, id string, size string) bool {
 	// 检查文件名
 	filename := strings.SplitN(getFilenameWithoutExt(filePath), "_", 2)

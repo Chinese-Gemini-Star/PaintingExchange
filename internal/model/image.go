@@ -10,6 +10,7 @@ type Image struct {
 	BigURI    string    `json:"bigURI" bson:"bigURI" example:"assert/images/big_68c8d808-54f7-4cfc-94c9-015416033dc9.jpg"` // 大图地址
 	MediumURI string    `json:"mediumURI" bson:"mediumURI" example:"TODO"`                                                 // 中图地址
 	SmallURI  string    `json:"smallURI" bson:"smallURI" example:"TODO"`                                                   // 小图地址
+	Title     string    `json:"title" bson:"title" example:"test"`                                                         // 图片标题
 	Label     []string  `json:"label" bson:"label"`                                                                        // 图片标签
 	Intro     string    `json:"intro" bson:"intro"`                                                                        // 图片简介
 	Like      int       `json:"like" bson:"like" example:"0"`                                                              // 收藏人数
