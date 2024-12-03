@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // ImageController 用户相关操作控制器
@@ -114,6 +115,7 @@ func (c *ImageController) Post(image model.Image) mvc.Result {
 
 	// 创建图片
 	image.Like = 0
+	image.CreatedAt = time.Now()
 	if _, err := images.InsertOne(nil, &image); err != nil {
 		log.Println("图片创建失败", err)
 		return mvc.Response{

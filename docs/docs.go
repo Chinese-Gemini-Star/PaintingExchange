@@ -485,6 +485,7 @@ const docTemplate = `{
     },
     "definitions": {
         "model.Image": {
+            "description": "图片",
             "type": "object",
             "properties": {
                 "auth": {
@@ -496,6 +497,11 @@ const docTemplate = `{
                     "description": "大图地址",
                     "type": "string",
                     "example": "assert/images/big_68c8d808-54f7-4cfc-94c9-015416033dc9.jpg"
+                },
+                "createAt": {
+                    "description": "创建时间",
+                    "type": "string",
+                    "example": "2004-05-03T17:30:08+08:00"
                 },
                 "id": {
                     "description": "图片id(UUID)",
