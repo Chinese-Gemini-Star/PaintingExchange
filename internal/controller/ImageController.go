@@ -42,7 +42,7 @@ func (c *ImageController) GetBy(imageID string) mvc.Result {
 	images := c.Mg.Database("PaintingExchange").Collection("Images")
 
 	// 查找图片
-	filter := bson.D{{"id", imageID}}
+	filter := bson.D{{"_id", imageID}}
 	if res := images.FindOne(nil, filter); res.Err() != nil {
 		log.Println("图片", imageID, "查找失败", res.Err().Error())
 		return mvc.Response{
@@ -251,7 +251,7 @@ func (c *ImageController) Put(image model.Image) mvc.Result {
 	// 更新图片信息
 	prevImage.Intro = image.Intro
 	prevImage.Label = image.Label
-	filter := bson.D{{"id", prevImage.ID}}
+	filter := bson.D{{"_id", prevImage.ID}}
 	update := bson.D{{"$set", prevImage}}
 	if _, err := images.UpdateOne(nil, filter, update); err != nil {
 		log.Println("图片更新失败", err)
@@ -317,7 +317,7 @@ func (c *ImageController) DeleteBy(imageID string) mvc.Result {
 	}
 
 	// 删除图片信息
-	filter := bson.D{{"id", prevImage.ID}}
+	filter := bson.D{{"_id", prevImage.ID}}
 	if _, err := images.DeleteOne(nil, filter); err != nil {
 		log.Println("图片删除失败", err)
 		return mvc.Response{

@@ -3,6 +3,7 @@ package controller
 import (
 	"PaintingExchange/internal/model"
 	"PaintingExchange/internal/service"
+	"github.com/go-resty/resty/v2"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
 	"golang.org/x/crypto/bcrypt"
@@ -104,10 +105,126 @@ func (c *UserController) Put(user model.User) mvc.Result {
 	}
 }
 
-// GetStars 获取用户收藏
-func (c *UserController) GetStars() mvc.Result {
-	// TODO 查询用户收藏的内容
+// GetStar 获取用户的收藏信息
+// @Summary 获取用户的收藏信息
+// @Description 查询用户自己的所有收藏信息
+// @Tags user
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.Star "返回用户的所有收藏记录"
+// @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Router /user/star [get]
+// @Security BearerAuth
+func (c *UserController) GetStar() mvc.Result {
+	// 获取用户名
+	loginUser, err := c.Ctx.User().GetRaw()
+	if err != nil {
+		return mvc.Response{
+			Code: iris.StatusUnauthorized,
+			Text: iris.StatusText(iris.StatusUnauthorized),
+		}
+	}
+	loginUserName := loginUser.(iris.SimpleUser).Username
+	log.Println("用户", loginUserName, "查询收藏")
+
+	// 读取所有收藏信息
+	var stars []model.Star
+	c.Db.Where("username=?", loginUserName).Find(&stars)
+
 	return mvc.Response{
-		Code: iris.StatusOK,
+		Code:   iris.StatusOK,
+		Object: stars,
+	}
+}
+
+// PostStar 用户收藏图片
+// @Summary 用户收藏图片
+// @Description 用户收藏指定的图片
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param star body model.Star true "收藏信息,只需要图片ID"
+// @Success 204 {object} nil "图片收藏成功，无返回内容"
+// @Failure 400 {object} string "请求错误，图片不存在"
+// @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Failure 500 {object} string "服务器内部错误"
+// @Router /user/star [post]
+// @Security BearerAuth
+func (c *UserController) PostStar(star model.Star) mvc.Result {
+	star.ID = 0
+
+	// 获取用户名
+	loginUser, err := c.Ctx.User().GetRaw()
+	if err != nil {
+		return mvc.Response{
+			Code: iris.StatusUnauthorized,
+			Text: iris.StatusText(iris.StatusUnauthorized),
+		}
+	}
+	loginUserName := loginUser.(iris.SimpleUser).Username
+	log.Println("用户", loginUserName, "收藏图片", star.ImageID)
+	star.Username = loginUserName
+
+	// 验证图片是否存在
+	resp, err := resty.New().R().SetHeader("Authorization", loginUser.(iris.SimpleUser).Authorization).Get("http://localhost:8880/image/" + star.ImageID)
+	if err != nil {
+		log.Println("请求图片信息失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: iris.StatusText(iris.StatusInternalServerError),
+		}
+	}
+	if resp.StatusCode() == 400 {
+		log.Println("图片不存在")
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "收藏的图片不存在",
+		}
+	}
+
+	// 记录收藏信息
+	c.Db.Create(&star)
+	return mvc.Response{
+		Code: iris.StatusNoContent,
+	}
+}
+
+// DeleteStar 取消收藏图片
+// @Summary 取消用户的图片收藏
+// @Description 取消自己收藏的图片
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param star body model.Star true "收藏信息,只需要图片ID"
+// @Success 204 {object} nil "取消收藏成功，无返回内容"
+// @Failure 400 {object} string "请求错误，收藏记录不存在"
+// @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Router /user/star [delete]
+// @Security BearerAuth
+func (c *UserController) DeleteStar(star model.Star) mvc.Result {
+	// 获取用户名
+	loginUser, err := c.Ctx.User().GetRaw()
+	if err != nil {
+		return mvc.Response{
+			Code: iris.StatusUnauthorized,
+			Text: iris.StatusText(iris.StatusUnauthorized),
+		}
+	}
+	loginUserName := loginUser.(iris.SimpleUser).Username
+	log.Println("用户", loginUserName, "取消收藏", star.ImageID)
+	star.Username = loginUserName
+
+	// 从数据库中删除
+	star.ID = 0
+	if c.Db.Where(&star).Delete(&star).RowsAffected == 0 {
+		log.Println("收藏记录不存在")
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "收藏记录不存在",
+		}
+	}
+
+	return mvc.Response{
+		Code: iris.StatusNoContent,
 	}
 }

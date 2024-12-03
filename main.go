@@ -56,6 +56,7 @@ func main() {
 		log.Fatalln("MySQL数据库连接失败")
 	} else {
 		db.AutoMigrate(&model.User{})
+		db.AutoMigrate(&model.Star{})
 	}
 
 	// mongoDB数据库连接

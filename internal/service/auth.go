@@ -46,7 +46,8 @@ func JWTMiddleware(ctx iris.Context) {
 
 	// 将用户信息存入上下文
 	ctx.SetUser(iris.SimpleUser{
-		Username: claims["username"].(string),
+		Username:      claims["username"].(string),
+		Authorization: authHeader,
 	})
 	ctx.Next()
 }

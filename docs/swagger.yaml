@@ -40,6 +40,18 @@ definitions:
         example: TODO
         type: string
     type: object
+  model.Star:
+    description: 收藏信息
+    properties:
+      imageID:
+        description: 图片ID
+        example: 68c8d808-54f7-4cfc-94c9-015416033dc9
+        type: string
+      username:
+        description: 用户名
+        example: test
+        type: string
+    type: object
   model.User:
     description: 用户
     properties:
@@ -365,6 +377,91 @@ paths:
       summary: 用户注册
       tags:
       - auth
+  /user/star:
+    delete:
+      consumes:
+      - application/json
+      description: 取消自己收藏的图片
+      parameters:
+      - description: 收藏信息,只需要图片ID
+        in: body
+        name: star
+        required: true
+        schema:
+          $ref: '#/definitions/model.Star'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 取消收藏成功，无返回内容
+        "400":
+          description: 请求错误，收藏记录不存在
+          schema:
+            type: string
+        "401":
+          description: 未授权，用户未登录或会话失效
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 取消用户的图片收藏
+      tags:
+      - user
+    get:
+      consumes:
+      - application/json
+      description: 查询用户自己的所有收藏信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回用户的所有收藏记录
+          schema:
+            items:
+              $ref: '#/definitions/model.Star'
+            type: array
+        "401":
+          description: 未授权，用户未登录或会话失效
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 获取用户的收藏信息
+      tags:
+      - user
+    post:
+      consumes:
+      - application/json
+      description: 用户收藏指定的图片
+      parameters:
+      - description: 收藏信息,只需要图片ID
+        in: body
+        name: star
+        required: true
+        schema:
+          $ref: '#/definitions/model.Star'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 图片收藏成功，无返回内容
+        "400":
+          description: 请求错误，图片不存在
+          schema:
+            type: string
+        "401":
+          description: 未授权，用户未登录或会话失效
+          schema:
+            type: string
+        "500":
+          description: 服务器内部错误
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 用户收藏图片
+      tags:
+      - user
 securityDefinitions:
   BearerAuth:
     in: header
