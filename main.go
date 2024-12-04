@@ -32,12 +32,10 @@ import (
 // @BasePath /
 func main() {
 	app := iris.New()
+	//app.Logger().SetLevel("debug")
 
 	// 允许跨域
-	app.UseRouter(cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"OPTIONS", "GET", "POST", "PUT", "DELETE"},
-	}))
+	app.UseRouter(cors.AllowAll())
 
 	// swaggerAPI界面
 	swaggerUI := swagger.Handler(swaggerFiles.Handler,
