@@ -36,7 +36,8 @@ func main() {
 	// 允许跨域
 	app.UseRouter(cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
+		AllowedMethods: []string{"OPTIONS", "GET", "POST", "PUT", "DELETE"},
+		AllowedHeaders: []string{"Authorization"},
 	}))
 
 	// swaggerAPI界面

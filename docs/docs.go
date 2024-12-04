@@ -22,7 +22,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "修改自己上传的图片信息(仅简介和标签允许修改,其他均以数据库已有信息为准)",
+                "description": "修改自己上传的图片信息(仅标题,简介和标签允许修改,其他均以数据库已有信息为准)",
                 "consumes": [
                     "application/json"
                 ],
@@ -218,12 +218,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "未授权，用户未登录或会话失效",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "未找到图片，图片ID不存在",
                         "schema": {
                             "type": "string"
                         }
@@ -668,6 +662,11 @@ const docTemplate = `{
                     "description": "小图地址",
                     "type": "string",
                     "example": "TODO"
+                },
+                "title": {
+                    "description": "图片标题",
+                    "type": "string",
+                    "example": "test"
                 }
             }
         },
