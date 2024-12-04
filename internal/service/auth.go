@@ -10,6 +10,11 @@ import (
 
 // JWTMiddleware JWT验证中间件
 func JWTMiddleware(ctx iris.Context) {
+	// 预检请求不验证
+	if strings.EqualFold(ctx.Method(), "OPTIONS") {
+		ctx.Next()
+	}
+
 	// 从请求头中获取 Authorization 字段
 	authHeader := ctx.GetHeader("Authorization")
 	if authHeader == "" {

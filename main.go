@@ -37,7 +37,6 @@ func main() {
 	app.UseRouter(cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"OPTIONS", "GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders: []string{"Authorization"},
 	}))
 
 	// swaggerAPI界面
