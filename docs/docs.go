@@ -176,6 +176,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/image/newest": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取最新的9张图片",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "image"
+                ],
+                "summary": "获取最新的9张图片",
+                "responses": {
+                    "200": {
+                        "description": "返回最新的9张图片信息",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Image"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/image/{imageID}": {
             "get": {
                 "security": [
@@ -699,6 +736,11 @@ const docTemplate = `{
                     "description": "描述",
                     "type": "string",
                     "example": "我是test"
+                },
+                "nickname": {
+                    "description": "昵称",
+                    "type": "string",
+                    "example": "test"
                 },
                 "password": {
                     "description": "密码",

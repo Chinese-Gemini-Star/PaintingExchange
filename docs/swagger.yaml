@@ -67,6 +67,10 @@ definitions:
         description: 描述
         example: 我是test
         type: string
+      nickname:
+        description: 昵称
+        example: test
+        type: string
       password:
         description: 密码
         example: "123456"
@@ -254,6 +258,29 @@ paths:
       security:
       - BearerAuth: []
       summary: 上传图片文件
+      tags:
+      - image
+  /image/newest:
+    get:
+      consumes:
+      - application/json
+      description: 获取最新的9张图片
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回最新的9张图片信息
+          schema:
+            items:
+              $ref: '#/definitions/model.Image'
+            type: array
+        "500":
+          description: 服务器内部错误
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 获取最新的9张图片
       tags:
       - image
   /user:

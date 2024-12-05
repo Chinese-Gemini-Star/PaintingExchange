@@ -8,6 +8,7 @@ import (
 	"github.com/kataras/iris/v12/mvc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/gorm"
 	"io"
 	"log"
@@ -329,6 +330,48 @@ func (c *ImageController) DeleteBy(imageID string) mvc.Result {
 		return mvc.Response{
 			Code: iris.StatusNoContent,
 		}
+	}
+}
+
+// GetNewest 获取最新9个图片
+// @Summary 获取最新的9张图片
+// @Description 获取最新的9张图片
+// @Tags image
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.Image "返回最新的9张图片信息"
+// @Failure 500 {object} string "服务器内部错误"
+// @Router /image/newest [get]
+// @Security BearerAuth
+func (c *ImageController) GetNewest() mvc.Result {
+	images := c.Mg.Database("PaintingExchange").Collection("Images")
+
+	// 获取最新9个图片
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "createdAt", Value: -1}}) // 按 createdAt 降序排序
+	findOptions.SetLimit(9)                                    // 限制 9 条记录
+	cursor, err := images.Find(nil, bson.D{}, findOptions)
+	if err != nil {
+		log.Println("最新图片查询失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: iris.StatusText(iris.StatusInternalServerError),
+		}
+	}
+	defer cursor.Close(nil)
+
+	// 组装返回结果
+	var res []model.Image
+	if err := cursor.All(nil, &res); err != nil {
+		log.Println("最新图片对象读取失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: iris.StatusText(iris.StatusInternalServerError),
+		}
+	}
+	return mvc.Response{
+		Code:   iris.StatusOK,
+		Object: res,
 	}
 }
 
