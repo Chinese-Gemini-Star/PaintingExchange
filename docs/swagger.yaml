@@ -316,6 +316,35 @@ paths:
       summary: 获取最新的9张图片
       tags:
       - image
+  /image/search:
+    get:
+      consumes:
+      - application/json
+      description: 查询图片，进行标签匹配和标题模糊匹配
+      parameters:
+      - description: 查询内容
+        in: query
+        name: search
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回符合查询条件的图片信息
+          schema:
+            items:
+              $ref: '#/definitions/model.Image'
+            type: array
+        "500":
+          description: 服务器内部错误
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 查询图片
+      tags:
+      - image
   /user:
     put:
       consumes:

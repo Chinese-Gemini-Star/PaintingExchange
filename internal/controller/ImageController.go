@@ -356,7 +356,7 @@ func (c *ImageController) GetNewest() mvc.Result {
 		log.Println("最新图片查询失败", err)
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
-			Text: iris.StatusText(iris.StatusInternalServerError),
+			Text: err.Error(),
 		}
 	}
 	defer cursor.Close(nil)
@@ -367,7 +367,7 @@ func (c *ImageController) GetNewest() mvc.Result {
 		log.Println("最新图片对象读取失败", err)
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
-			Text: iris.StatusText(iris.StatusInternalServerError),
+			Text: err.Error(),
 		}
 	}
 	return mvc.Response{
@@ -402,7 +402,7 @@ func (c *ImageController) GetFromBy(username string) mvc.Result {
 		log.Println("查询用户上传图片失败", err)
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
-			Text: iris.StatusText(iris.StatusInternalServerError),
+			Text: err.Error(),
 		}
 	}
 	defer cursor.Close(nil)
@@ -413,7 +413,7 @@ func (c *ImageController) GetFromBy(username string) mvc.Result {
 		log.Println("用户上传的图片对象读取失败", err)
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
-			Text: iris.StatusText(iris.StatusInternalServerError),
+			Text: err.Error(),
 		}
 	}
 
@@ -425,6 +425,91 @@ func (c *ImageController) GetFromBy(username string) mvc.Result {
 		}
 	}
 
+	return mvc.Response{
+		Code:   iris.StatusOK,
+		Object: res,
+	}
+}
+
+// GetSearch 查询图片
+// @Summary 查询图片
+// @Description 查询图片，进行标签匹配和标题模糊匹配
+// @Tags image
+// @Accept json
+// @Produce json
+// @Param search query string true "查询内容"
+// @Success 200 {array} model.Image "返回符合查询条件的图片信息"
+// Failure 400 {object} string "缺少请求参数"
+// @Failure 500 {object} string "服务器内部错误"
+// @Router /image/search [get]
+// @Security BearerAuth
+func (c *ImageController) GetSearch() mvc.Result {
+	images := c.Mg.Database("PaintingExchange").Collection("Images")
+
+	// 获取请求参数
+	search := c.Ctx.URLParam("search")
+	if search == "" {
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "缺少请求参数",
+		}
+	}
+
+	log.Println("查询图片,内容:", search)
+
+	// 空格分割关键字
+	keywords := strings.Split(search, " ")
+	// 匹配关键字至标签
+	keyWordsFilter := bson.M{
+		"label": bson.M{"$in": keywords},
+	}
+	keywordCursor, err := images.Find(nil, keyWordsFilter)
+	if err != nil {
+		log.Println("标签查询图片失败")
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+	defer keywordCursor.Close(nil)
+	// 生成结果
+	var tagRes []model.Image
+	if err := keywordCursor.All(nil, &tagRes); err != nil {
+		log.Println("标签查询图片读取失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+
+	// 模糊匹配标题
+	titleFilter := bson.M{
+		"title": bson.M{
+			"$regex":   search, // 模糊匹配
+			"$options": "i",    // 忽略大小写
+		},
+	}
+	titleCursor, err := images.Find(nil, titleFilter)
+	if err != nil {
+		log.Println("标题查询图片失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+	defer titleCursor.Close(nil)
+	// 生成结果
+	var titleRes []model.Image
+	if err := titleCursor.All(nil, &titleRes); err != nil {
+		log.Println("标题查询图片读取失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+
+	// 合并结果
+	res := append(tagRes, titleRes...)
 	return mvc.Response{
 		Code:   iris.StatusOK,
 		Object: res,
