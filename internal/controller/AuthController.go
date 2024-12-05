@@ -100,6 +100,7 @@ func (c *AuthController) PostRegister(user model.User) mvc.Result {
 	}
 
 	// 写入数据库
+	user.Nickname = user.Username
 	c.Db.Create(&user)
 
 	// 签发jwt
