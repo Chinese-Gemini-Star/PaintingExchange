@@ -346,6 +346,7 @@ func (c *ImageController) DeleteBy(imageID string) mvc.Result {
 func (c *ImageController) GetNewest() mvc.Result {
 	images := c.Mg.Database("PaintingExchange").Collection("Images")
 
+	log.Println("获取最新9个图片")
 	// 获取最新9个图片
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{Key: "createdAt", Value: -1}}) // 按 createdAt 降序排序
@@ -369,6 +370,61 @@ func (c *ImageController) GetNewest() mvc.Result {
 			Text: iris.StatusText(iris.StatusInternalServerError),
 		}
 	}
+	return mvc.Response{
+		Code:   iris.StatusOK,
+		Object: res,
+	}
+}
+
+// GetFromBy 获取指定用户上传的所有图片
+// @Summary 获取指定用户上传的所有图片
+// @Description 查询指定用户名上传的所有图片
+// @Tags image
+// @Accept json
+// @Produce json
+// @Param username path string true "用户名"
+// @Success 200 {array} model.Image "返回指定用户上传的所有图片信息"
+// @Failure 400 {object} string "用户未上传图片或用户不存在,注意这个情况有时候不是错误,只是异常,需要进行处理"
+// @Failure 500 {object} string "服务器内部错误"
+// @Router /image/from/{username} [get]
+// @Security BearerAuth
+func (c *ImageController) GetFromBy(username string) mvc.Result {
+	images := c.Mg.Database("PaintingExchange").Collection("Images")
+
+	log.Println("查询用户", username, "上传的图片")
+
+	// 查询用户上传的图片
+	filter := bson.M{
+		"auth": username,
+	}
+	cursor, err := images.Find(nil, filter)
+	if err != nil {
+		log.Println("查询用户上传图片失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: iris.StatusText(iris.StatusInternalServerError),
+		}
+	}
+	defer cursor.Close(nil)
+
+	// 组装返回对象
+	var res []model.Image
+	if err := cursor.All(nil, &res); err != nil {
+		log.Println("用户上传的图片对象读取失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: iris.StatusText(iris.StatusInternalServerError),
+		}
+	}
+
+	// 用户未上传图片或用户不存在
+	if res == nil {
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "用户未上传图片或用户不存在",
+		}
+	}
+
 	return mvc.Response{
 		Code:   iris.StatusOK,
 		Object: res,
