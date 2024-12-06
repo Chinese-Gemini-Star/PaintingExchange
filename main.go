@@ -72,10 +72,12 @@ func main() {
 
 	// 创建图片缓存目录并绑定路由
 	err = os.MkdirAll(env.GetImgDir(), os.ModePerm)
+	err = os.MkdirAll(env.GetAvatarDir(), os.ModePerm)
 	if err != nil {
 		log.Fatalln("创建图片缓存目录失败:", err)
 	}
 	app.HandleDir("/assert/images", env.GetImgDir())
+	app.HandleDir("/assert/avatars", env.GetAvatarDir())
 
 	// 绑定依赖和路由
 	mvc.Configure(app, func(application *mvc.Application) {

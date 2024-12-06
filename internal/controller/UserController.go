@@ -1,14 +1,19 @@
 package controller
 
 import (
+	"PaintingExchange/internal/env"
 	"PaintingExchange/internal/model"
 	"PaintingExchange/internal/service"
 	"github.com/go-resty/resty/v2"
+	"github.com/google/uuid"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"io"
 	"log"
+	"os"
+	"path/filepath"
 )
 
 // UserController 用户相关操作控制器
@@ -44,6 +49,71 @@ func (c *UserController) GetBy(username string) mvc.Result {
 	return mvc.Response{
 		Code:   iris.StatusOK,
 		Object: user,
+	}
+}
+
+// PostAvatar 上传用户头像
+// @Summary 上传用户头像
+// @Description 上传用户自己的头像文件,后续需要再请求一次/user [put]来更新用户信息
+// @Tags user
+// @Accept multipart/form-data
+// @Produce text/plain
+// @Param image formData file true "用户上传的头像文件"
+// @Success 201 {string} string "返回头像存储路径"
+// @Failure 401 {string} string "用户未授权"
+// @Failure 500 {string} string "服务器内部错误"
+// @Router /user/avatar [post]
+// @Security BearerAuth
+func (c *UserController) PostAvatar() mvc.Result {
+	// 获取用户名
+	loginUser, err := c.Ctx.User().GetRaw()
+	if err != nil {
+		return mvc.Response{
+			Code: iris.StatusUnauthorized,
+			Text: iris.StatusText(iris.StatusUnauthorized),
+		}
+	}
+	loginUserName := loginUser.(iris.SimpleUser).Username
+	// 读取图片
+	log.Println(loginUserName, "上传头像")
+	file, info, err := c.Ctx.FormFile("image")
+	if err != nil {
+		log.Println("图片文件上传失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+
+	// 生成图片id
+	imageID := uuid.New().String()
+	// 创建对应文件
+	uri := filepath.Join(env.GetAvatarDir(), imageID+filepath.Ext(info.Filename))
+	out, err := os.Create(uri)
+	if err != nil {
+		log.Println("头像文件创建失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+	defer out.Close()
+
+	// 写入图片
+	_, err = io.Copy(out, file)
+	if err != nil {
+		log.Println("头像文件保存失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+
+	log.Println("头像文件保存成功")
+	// 返回头像地址
+	return mvc.Response{
+		Code: iris.StatusCreated,
+		Text: uri,
 	}
 }
 

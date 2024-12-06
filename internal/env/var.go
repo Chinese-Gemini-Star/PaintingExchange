@@ -19,3 +19,7 @@ func GetJWTKey() []byte {
 func GetImgDir() string {
 	return "assert/images"
 }
+
+func GetAvatarDir() string {
+	return "assert/avatars"
+}

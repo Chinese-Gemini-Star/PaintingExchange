@@ -476,6 +476,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/avatar": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "上传用户自己的头像文件,后续需要再请求一次/user [put]来更新用户信息",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "上传用户头像",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "用户上传的头像文件",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "返回头像存储路径",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "用户未授权",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/user/login": {
             "post": {
                 "description": "用户通过用户名和密码登录，成功后返回 JWT Token",
@@ -828,7 +877,7 @@ const docTemplate = `{
                 "avatarURI": {
                     "description": "头像地址",
                     "type": "string",
-                    "example": "TODO"
+                    "example": "assert/avatars/d18b9c4b-8d7f-407f-a630-cf2596bd7511.jpg"
                 },
                 "intro": {
                     "description": "描述",
