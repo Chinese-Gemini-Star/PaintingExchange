@@ -837,15 +837,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 0
                 },
-                "mediumURI": {
+                "midURI": {
                     "description": "中图地址",
                     "type": "string",
-                    "example": "TODO"
-                },
-                "smallURI": {
-                    "description": "小图地址",
-                    "type": "string",
-                    "example": "TODO"
+                    "example": "assert/images/med_68c8d808-54f7-4cfc-94c9-015416033dc9.jpg"
                 },
                 "title": {
                     "description": "图片标题",

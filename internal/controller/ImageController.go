@@ -3,14 +3,15 @@ package controller
 import (
 	"PaintingExchange/internal/env"
 	"PaintingExchange/internal/model"
+	"PaintingExchange/internal/service"
 	"github.com/google/uuid"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"gocv.io/x/gocv"
 	"gorm.io/gorm"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -153,6 +154,7 @@ func (c *ImageController) PostFile() mvc.Result {
 		}
 	}
 	loginUserName := loginUser.(iris.SimpleUser).Username
+
 	// 读取图片
 	log.Println(loginUserName, "上传图片文件")
 	file, info, err := c.Ctx.FormFile("image")
@@ -163,38 +165,38 @@ func (c *ImageController) PostFile() mvc.Result {
 			Text: err.Error(),
 		}
 	}
+	img, err := service.FileToMat(file)
+	if err != nil {
+		log.Println("图片文件读取失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
 
 	// 生成图片id
 	imageID := uuid.New().String()
-	// TODO 生成不同尺码的图片
-	// 创建对应文件
+
+	originalWidth := img.Cols()
+	originalHeight := img.Rows()
+
+	// 保存大尺寸图片
+	bigImg := service.ResizeImage(img, originalWidth, originalHeight, service.BigSize)
 	bigURI := filepath.Join("./assert/images", "big_"+imageID+filepath.Ext(info.Filename))
-	out, err := os.Create(bigURI)
-	if err != nil {
-		log.Println("图片文件创建失败", err)
-		return mvc.Response{
-			Code: iris.StatusInternalServerError,
-			Text: err.Error(),
-		}
-	}
-	defer out.Close()
+	gocv.IMWrite(bigURI, bigImg)
 
-	// 写入图片
-	_, err = io.Copy(out, file)
-	if err != nil {
-		log.Println("图片文件保存失败", err)
-		return mvc.Response{
-			Code: iris.StatusInternalServerError,
-			Text: err.Error(),
-		}
-	}
-
+	// 保存中尺寸图片
+	midImg := service.ResizeImage(img, originalWidth, originalHeight, service.MidSize)
+	midURI := filepath.Join("./assert/images", "mid_"+imageID+filepath.Ext(info.Filename))
+	gocv.IMWrite(midURI, midImg)
 	log.Println("图片文件保存成功")
+
 	// 封装成对象返回
 	var image model.Image
 	image.ID = imageID
 	image.Auth = loginUserName
 	image.BigURI = bigURI
+	image.MidURI = midURI
 	return mvc.Response{
 		Code:   iris.StatusCreated,
 		Object: image,
