@@ -1,9 +1,35 @@
 version: '3.9'
 services:
+  mysql:
+    image: mysql
+    container_name: paint_mysql
+    restart: always
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: true
+      MYSQL_USER: paintingExchange
+      MYSQL_PASSWORD: 1234567
+      MYSQL_DATABASE: paintingExchange
+    ports:
+      - "3307:3306"
 
   mongodb:
     image: bitnami/mongodb
-    container_name: mongodb
+    container_name: paint_mongodb
     restart: always
     ports:
       - "27017:27017"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paint_app
+    depends_on:
+      - mysql
+      - mongodb
+    environment:
+      dbHost: mysql
+      mgHost: mongodb
+    restart: always
+    ports:
+      - "8880:8880"

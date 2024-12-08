@@ -48,7 +48,7 @@ func main() {
 
 	// MySQL数据库连接
 	db, err := gorm.Open(mysql.New(mysql.Config{
-		DSN: fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", env.GetEnv("dbUserName", "paintingExchange"), env.GetEnv("dbPassword", "1234567"), env.GetEnv("dbName", "paintingExchange")),
+		DSN: fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", env.GetEnv("dbUserName", "paintingExchange"), env.GetEnv("dbPassword", "1234567"), env.GetEnv("dbHost", "localhost"), env.GetEnv("dbName", "paintingExchange")),
 	}), &gorm.Config{})
 	if err != nil {
 		log.Fatalln("MySQL数据库连接失败")
@@ -58,7 +58,7 @@ func main() {
 	}
 
 	// mongoDB数据库连接
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+	clientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:27017", env.GetEnv("mgHost", "localhost")))
 	// 连接到MongoDB
 	mg, err := mongo.Connect(nil, clientOptions)
 	if err != nil {
