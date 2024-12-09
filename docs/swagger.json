@@ -339,6 +339,50 @@
                 }
             }
         },
+        "/chat": {
+            "get": {
+                "description": "通过此端点建立 WebSocket 连接。连接后，进行实时聊天交流。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "websocket服务端(无法在swagger中测试)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "子协议填写JWT(不需要Bearer),用于身份验证",
+                        "name": "Sec-WebSocket-Protocol",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "WebSocket 连接建立成功",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Message"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权，JWT无效或已过期",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/image": {
             "put": {
                 "security": [
@@ -1245,6 +1289,30 @@
                     "description": "图片标题",
                     "type": "string",
                     "example": "test"
+                }
+            }
+        },
+        "model.Message": {
+            "description": "聊天消息",
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "消息内容",
+                    "type": "string"
+                },
+                "from": {
+                    "description": "发送者用户名",
+                    "type": "string",
+                    "example": "test"
+                },
+                "time": {
+                    "description": "发送时间",
+                    "type": "string"
+                },
+                "to": {
+                    "description": "接收者用户名",
+                    "type": "string",
+                    "example": "test1"
                 }
             }
         },

@@ -45,8 +45,7 @@ func ResizeImage(img gocv.Mat, originalWidth, originalHeight int, sizeType SizeT
 	targetWidth := int(float64(originalWidth) * scale)
 
 	// 选择插值方法
-	//interpolation := gocv.InterpolationCubic
-	interpolation := gocv.InterpolationArea
+	interpolation := gocv.InterpolationCubic
 	if originalHeight > targetHeight {
 		interpolation = gocv.InterpolationArea
 	}

@@ -58,6 +58,24 @@ definitions:
         example: test
         type: string
     type: object
+  model.Message:
+    description: 聊天消息
+    properties:
+      content:
+        description: 消息内容
+        type: string
+      from:
+        description: 发送者用户名
+        example: test
+        type: string
+      time:
+        description: 发送时间
+        type: string
+      to:
+        description: 接收者用户名
+        example: test1
+        type: string
+    type: object
   model.Star:
     description: 收藏信息
     properties:
@@ -312,6 +330,35 @@ paths:
       summary: 解除封禁用户
       tags:
       - admin
+  /chat:
+    get:
+      consumes:
+      - application/json
+      description: 通过此端点建立 WebSocket 连接。连接后，进行实时聊天交流。
+      parameters:
+      - description: 子协议填写JWT(不需要Bearer),用于身份验证
+        in: header
+        name: Sec-WebSocket-Protocol
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "101":
+          description: WebSocket 连接建立成功
+          schema:
+            type: string
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Message'
+        "401":
+          description: 未授权，JWT无效或已过期
+          schema:
+            type: string
+      summary: websocket服务端(无法在swagger中测试)
+      tags:
+      - chat
   /image:
     post:
       consumes:

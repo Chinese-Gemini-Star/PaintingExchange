@@ -12,13 +12,17 @@ import (
 
 // JWTMiddleware JWT验证中间件
 func JWTMiddleware(ctx iris.Context) {
+	checkJwtFrom(ctx, "Authorization")
+}
+
+func checkJwtFrom(ctx iris.Context, header string) {
 	// 从上下文获取数据库对象
 	db := ctx.Values().Get("db").(*gorm.DB)
 
 	// 从请求头中获取 Authorization 字段
-	authHeader := ctx.GetHeader("Authorization")
+	authHeader := ctx.GetHeader(header)
 	if authHeader == "" {
-		log.Println("缺少Authorization请求头")
+		log.Println("缺少", header, "请求头")
 		ctx.StatusCode(iris.StatusUnauthorized)
 		ctx.Text(iris.StatusText(iris.StatusUnauthorized))
 		return
@@ -102,4 +106,11 @@ func CheckIsAdmin(ctx iris.Context) {
 	}
 
 	ctx.Next()
+}
+
+// BeginWsRequest Websocket连接鉴权
+func BeginWsRequest(ctx iris.Context) {
+	token := ctx.GetHeader("Sec-WebSocket-Protocol")
+	ctx.Header("Sec-WebSocket-Protocol", token)
+	checkJwtFrom(ctx, "Sec-WebSocket-Protocol")
 }

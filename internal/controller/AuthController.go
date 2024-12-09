@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"log"
+	"path/filepath"
 	"time"
 )
 
@@ -110,6 +111,7 @@ func (c *AuthController) PostUserRegister(user model.User) mvc.Result {
 
 	// 写入数据库
 	user.Nickname = user.Username
+	user.AvatarURI = filepath.Join(env.GetAvatarDir(), "0.png")
 	c.Db.Create(&user)
 
 	// 签发jwt

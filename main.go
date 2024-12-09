@@ -56,6 +56,7 @@ func main() {
 		db.AutoMigrate(&model.User{})
 		db.AutoMigrate(&model.Star{})
 		db.AutoMigrate(&model.Admin{})
+		db.AutoMigrate(&model.Message{})
 	}
 	app.Use(func(ctx iris.Context) {
 		ctx.Values().Set("db", db)
@@ -84,6 +85,10 @@ func main() {
 	app.HandleDir("/assert/images", env.GetImgDir())
 	app.HandleDir("/assert/avatars", env.GetAvatarDir())
 
+	// 后台
+	app.HandleDir("/back", "webapp/back")
+	app.HandleDir("/back/page", "webapp/back")
+
 	// 绑定依赖和路由
 	mvc.Configure(app, func(application *mvc.Application) {
 		application.Register(db)
@@ -93,6 +98,9 @@ func main() {
 		application.Party("/image", service.JWTMiddleware).Handle(new(controller.ImageController))
 		application.Party("/back", service.JWTMiddleware, service.CheckIsAdmin).Handle(new(controller.BackController))
 	})
+
+	// 绑定websocket
+	app.Get("/chat", service.BeginWsRequest, controller.HandleWebsocket)
 
 	if err := app.Listen(":8880"); err != nil {
 		log.Fatalln("启动失败")
