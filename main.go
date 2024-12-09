@@ -32,7 +32,7 @@ import (
 // @BasePath /
 func main() {
 	app := iris.New()
-	//app.Logger().SetLevel("debug")
+	// app.Logger().SetLevel("debug")
 
 	// 允许跨域
 	app.UseRouter(cors.AllowAll())
@@ -55,7 +55,12 @@ func main() {
 	} else {
 		db.AutoMigrate(&model.User{})
 		db.AutoMigrate(&model.Star{})
+		db.AutoMigrate(&model.Admin{})
 	}
+	app.Use(func(ctx iris.Context) {
+		ctx.Values().Set("db", db)
+		ctx.Next()
+	})
 
 	// mongoDB数据库连接
 	clientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:27017", env.GetEnv("mgHost", "localhost")))
@@ -83,9 +88,10 @@ func main() {
 	mvc.Configure(app, func(application *mvc.Application) {
 		application.Register(db)
 		application.Register(mg)
-		application.Party("/user").Handle(new(controller.AuthController))
+		application.Party("/").Handle(new(controller.AuthController))
 		application.Party("/user", service.JWTMiddleware).Handle(new(controller.UserController))
 		application.Party("/image", service.JWTMiddleware).Handle(new(controller.ImageController))
+		application.Party("/back").Handle(new(controller.BackController))
 	})
 
 	if err := app.Listen(":8880"); err != nil {

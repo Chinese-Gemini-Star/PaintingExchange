@@ -3,7 +3,6 @@ package controller
 import (
 	"PaintingExchange/internal/env"
 	"PaintingExchange/internal/model"
-	"PaintingExchange/internal/service"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	"github.com/kataras/iris/v12"
@@ -151,7 +150,7 @@ func (c *UserController) Put(user model.User) mvc.Result {
 	// 设置密码
 	var prevUser model.User
 	c.Db.Find(&prevUser, "username=?", user.Username)
-	if user.Password == "" || service.CheckPass(user, *c.Db) {
+	if user.Password == "" {
 		user.Password = prevUser.Password
 	} else {
 		// 修改了密码
@@ -217,6 +216,7 @@ func (c *UserController) GetStar() mvc.Result {
 // @Success 204 {object} nil "图片收藏成功，无返回内容"
 // @Failure 400 {object} string "请求错误，图片不存在"
 // @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Failure 403 {object} string "收藏的图片被封禁"
 // @Failure 500 {object} string "服务器内部错误"
 // @Router /user/star [post]
 // @Security BearerAuth
@@ -249,6 +249,12 @@ func (c *UserController) PostStar(star model.Star) mvc.Result {
 		return mvc.Response{
 			Code: iris.StatusBadRequest,
 			Text: "收藏的图片不存在",
+		}
+	} else if resp.StatusCode() == 403 {
+		log.Println("图片被封禁")
+		return mvc.Response{
+			Code: iris.StatusForbidden,
+			Text: "收藏的图片被封禁",
 		}
 	}
 

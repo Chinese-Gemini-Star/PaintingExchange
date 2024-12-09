@@ -36,6 +36,7 @@ type ImageController struct {
 // @Success 200 {object} model.Image "图片对象"
 // @Failure 400 {object} string "请求错误，图片ID无效"
 // @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Failure 403 {object} string "图片被封禁"
 // @Failure 500 {object} string "服务器内部错误"
 // @Router /image/{imageID} [get]
 // @Security BearerAuth
@@ -53,6 +54,15 @@ func (c *ImageController) GetBy(imageID string) mvc.Result {
 	} else {
 		var image model.Image
 		res.Decode(&image)
+
+		// 验证图片是否被封
+		if image.IsBan {
+			return mvc.Response{
+				Code: iris.StatusForbidden,
+				Text: "图片被封禁",
+			}
+		}
+
 		return mvc.Response{
 			Code:   iris.StatusOK,
 			Object: image,
@@ -105,8 +115,7 @@ func (c *ImageController) Post(image model.Image) mvc.Result {
 	}
 
 	// 验证文件名
-	// TODO 验证另外两个文件名
-	if !checkImageFile(image.BigURI, image.ID, "big") {
+	if !checkImageFile(image.BigURI, image.ID, "big") || !checkImageFile(image.MidURI, image.ID, "mid") {
 		log.Println("图片id或路径异常")
 		return mvc.Response{
 			Code: iris.StatusBadRequest,
@@ -213,6 +222,7 @@ func (c *ImageController) PostFile() mvc.Result {
 // @Success 201 {object} model.Image "图片信息更新成功，返回更新后的图片信息"
 // @Failure 400 {object} string "请求数据异常"
 // @Failure 401 {object} string "未授权，用户未登录或会话失效"
+// @Failure 403 {object} string "图片被封禁"
 // @Failure 500 {object} string "服务器内部错误"
 // @Router /image [put]
 // @Security BearerAuth
@@ -240,6 +250,15 @@ func (c *ImageController) Put(image model.Image) mvc.Result {
 		}
 	}
 	prevImage := prevImageRes.Object.(model.Image)
+
+	// 验证图片是否被封禁
+	if prevImage.IsBan {
+		log.Println("图片被封禁")
+		return mvc.Response{
+			Code: iris.StatusForbidden,
+			Text: "图片被封禁",
+		}
+	}
 
 	// 验证是否为本人操作
 	if loginUserName != prevImage.Auth {
