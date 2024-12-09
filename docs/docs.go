@@ -758,6 +758,33 @@ const docTemplate = `{
                 }
             }
         },
+        "/jwt/test": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "测试JWT是否有效，验证用户是否具有访问权限",
+                "tags": [
+                    "auth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "JWT验证通过",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权，JWT无效或已过期",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/user": {
             "put": {
                 "security": [

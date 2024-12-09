@@ -135,6 +135,17 @@ func (c *AuthController) PostUserRegister(user model.User) mvc.Result {
 	}
 }
 
+// GetJwtTest 测试jwt
+// @Description 测试JWT是否有效，验证用户是否具有访问权限
+// @Tags auth
+// @Success 200 {object} string "JWT验证通过"
+// @Failure 401 {object} string "未授权，JWT无效或已过期"
+// @Router /jwt/test [get]
+// @Security BearerAuth
+func (c *AuthController) GetJwtTest() {
+	service.JWTMiddleware(c.Ctx)
+}
+
 // PostBackLogin 管理员登录
 // @Summary 管理员登录
 // @Description 管理员登录
