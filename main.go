@@ -91,7 +91,7 @@ func main() {
 		application.Party("/").Handle(new(controller.AuthController))
 		application.Party("/user", service.JWTMiddleware).Handle(new(controller.UserController))
 		application.Party("/image", service.JWTMiddleware).Handle(new(controller.ImageController))
-		application.Party("/back").Handle(new(controller.BackController))
+		application.Party("/back", service.JWTMiddleware, service.CheckIsAdmin).Handle(new(controller.BackController))
 	})
 
 	if err := app.Listen(":8880"); err != nil {

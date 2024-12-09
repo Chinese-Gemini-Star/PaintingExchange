@@ -52,9 +52,10 @@ func JWTMiddleware(ctx iris.Context) {
 	user := model.User{
 		Username: claims["username"].(string),
 	}
+	var roles []string
 	// 验证用户是否是管理员
 	if isAdmin, exist := claims["isAdmin"]; exist && isAdmin.(bool) {
-		// 不作处理
+		roles = append(roles, "admin")
 	} else {
 		// 验证用户是否存在或被封禁
 		rows := db.Where(&user).Find(&user).RowsAffected
@@ -70,6 +71,35 @@ func JWTMiddleware(ctx iris.Context) {
 	ctx.SetUser(iris.SimpleUser{
 		Username:      user.Username,
 		Authorization: authHeader,
+		Roles:         roles,
 	})
+	ctx.Next()
+}
+
+func CheckIsAdmin(ctx iris.Context) {
+	// 查询用户
+	loginUser, err := ctx.User().GetRaw()
+	if err != nil {
+		log.Println("管理员验证失败,用户对象不存在")
+		ctx.StatusCode(iris.StatusUnauthorized)
+		ctx.Text(iris.StatusText(iris.StatusUnauthorized))
+		return
+	}
+
+	// 检查身份是否包含管理员
+	isAdmin := false
+	for _, item := range loginUser.(iris.SimpleUser).Roles {
+		if item == "admin" {
+			isAdmin = true
+		}
+	}
+
+	if !isAdmin {
+		log.Println("管理员验证失败,用户不是管理员")
+		ctx.StatusCode(iris.StatusUnauthorized)
+		ctx.Text(iris.StatusText(iris.StatusUnauthorized))
+		return
+	}
+
 	ctx.Next()
 }
