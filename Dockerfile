@@ -8,4 +8,6 @@ WORKDIR /app
 
 COPY PaintingExchange .
 
+VOLUME ["./assert", "/app/assert"]
+
 CMD ["./PaintingExchange"]

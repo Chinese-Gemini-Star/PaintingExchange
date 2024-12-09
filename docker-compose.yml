@@ -31,5 +31,7 @@ services:
       dbHost: mysql
       mgHost: mongodb
     restart: always
+    volumes:
+      - ./assert/:/app/assert/
     ports:
       - "8880:8880"
