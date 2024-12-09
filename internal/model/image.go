@@ -15,4 +15,5 @@ type Image struct {
 	Like      int       `json:"like" bson:"like" example:"0"`                                                              // 收藏人数
 	CreatedAt time.Time `json:"createAt" bson:"createAt" example:"2024-12-03T10:18:36.897966604+08:00"`                    // 创建时间
 	IsBan     bool      `json:"isBan" bson:"isBan" example:"false"`                                                        // 是否被ban
+	AuthIsBan bool      `json:"authIsBan" bson:"authIsBan" example:"false"`                                                // 作者是否被封禁
 }

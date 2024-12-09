@@ -28,6 +28,7 @@ type UserController struct {
 // @Param username path string true "用户名"
 // @Success 200 {object} model.User "用户对象(无密码)"
 // @Failure 401 {object} string "未授权错误"
+// @Failure 403 {object} string "用户被封禁"
 // @Failure 404 {object} string "用户不存在"
 // @Router /user/{username} [get]
 // @Security BearerAuth
@@ -35,6 +36,8 @@ func (c *UserController) GetBy(username string) mvc.Result {
 	log.Println("查询用户", username)
 	var user model.User
 	c.Db.Where("username=?", username).Find(&user)
+
+	// 检查用户是否存在
 	if user.Password == "" {
 		log.Println("查询用户", username, "不存在")
 		return mvc.Response{
@@ -42,9 +45,18 @@ func (c *UserController) GetBy(username string) mvc.Result {
 			Text: "用户不存在",
 		}
 	}
-	user.Password = ""
+
+	// 检查是否被封禁
+	if user.IsBan {
+		log.Println("查询用户", username, "被封禁")
+		return mvc.Response{
+			Code: iris.StatusForbidden,
+			Text: "用户被封禁",
+		}
+	}
 
 	log.Println("查询用户", username, "成功")
+	user.Password = ""
 	return mvc.Response{
 		Code:   iris.StatusOK,
 		Object: user,

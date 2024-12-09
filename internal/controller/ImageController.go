@@ -56,7 +56,7 @@ func (c *ImageController) GetBy(imageID string) mvc.Result {
 		res.Decode(&image)
 
 		// 验证图片是否被封
-		if image.IsBan {
+		if image.IsBan || image.AuthIsBan {
 			return mvc.Response{
 				Code: iris.StatusForbidden,
 				Text: "图片被封禁",
@@ -242,23 +242,20 @@ func (c *ImageController) Put(image model.Image) mvc.Result {
 
 	// 查询原图片对象
 	prevImageRes := c.GetBy(image.ID).(mvc.Response)
-	if prevImageRes.Code != iris.StatusOK {
+	if prevImageRes.Code == iris.StatusBadRequest {
 		log.Println("图片不存在")
 		return mvc.Response{
 			Code: iris.StatusBadRequest,
 			Text: "图片不存在",
 		}
-	}
-	prevImage := prevImageRes.Object.(model.Image)
-
-	// 验证图片是否被封禁
-	if prevImage.IsBan {
+	} else if prevImageRes.Code == iris.StatusForbidden {
 		log.Println("图片被封禁")
 		return mvc.Response{
 			Code: iris.StatusForbidden,
 			Text: "图片被封禁",
 		}
 	}
+	prevImage := prevImageRes.Object.(model.Image)
 
 	// 验证是否为本人操作
 	if loginUserName != prevImage.Auth {
@@ -370,8 +367,7 @@ func (c *ImageController) GetNewest() mvc.Result {
 	log.Println("获取最新9个图片")
 	// 获取最新9个图片
 	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{Key: "createdAt", Value: -1}}) // 按 createdAt 降序排序
-	findOptions.SetLimit(9)                                    // 限制 9 条记录
+	findOptions.SetSort(bson.D{{Key: "createdAt", Value: -1}}) // 按创建时间降序排序
 	cursor, err := images.Find(nil, bson.D{}, findOptions)
 	if err != nil {
 		log.Println("最新图片查询失败", err)
@@ -382,15 +378,33 @@ func (c *ImageController) GetNewest() mvc.Result {
 	}
 	defer cursor.Close(nil)
 
-	// 组装返回结果
+	// 组装返回结果,保留9个
 	var res []model.Image
-	if err := cursor.All(nil, &res); err != nil {
-		log.Println("最新图片对象读取失败", err)
-		return mvc.Response{
-			Code: iris.StatusInternalServerError,
-			Text: err.Error(),
+	for cursor.Next(nil) && len(res) < 9 {
+		var image model.Image
+		if err := cursor.Decode(&image); err != nil {
+			log.Println("最新图片对象读取失败", err)
+			return mvc.Response{
+				Code: iris.StatusInternalServerError,
+				Text: err.Error(),
+			}
 		}
+
+		// 跳过已封禁
+		if image.IsBan || image.AuthIsBan {
+			continue
+		}
+
+		res = append(res, image)
 	}
+	//if err := cursor.All(nil, &res); err != nil {
+	//	log.Println("最新图片对象读取失败", err)
+	//	return mvc.Response{
+	//		Code: iris.StatusInternalServerError,
+	//		Text: err.Error(),
+	//	}
+	//}
+
 	return mvc.Response{
 		Code:   iris.StatusOK,
 		Object: res,
@@ -405,7 +419,6 @@ func (c *ImageController) GetNewest() mvc.Result {
 // @Produce json
 // @Param username path string true "用户名"
 // @Success 200 {array} model.Image "返回指定用户上传的所有图片信息"
-// @Failure 400 {object} string "用户未上传图片或用户不存在,注意这个情况有时候不是错误,只是异常,需要进行处理"
 // @Failure 500 {object} string "服务器内部错误"
 // @Router /image/from/{username} [get]
 // @Security BearerAuth
@@ -430,21 +443,30 @@ func (c *ImageController) GetFromBy(username string) mvc.Result {
 
 	// 组装返回对象
 	var res []model.Image
-	if err := cursor.All(nil, &res); err != nil {
-		log.Println("用户上传的图片对象读取失败", err)
-		return mvc.Response{
-			Code: iris.StatusInternalServerError,
-			Text: err.Error(),
+	for cursor.Next(nil) {
+		var image model.Image
+		if err := cursor.Decode(&image); err != nil {
+			log.Println("用户上传的图片对象读取失败", err)
+			return mvc.Response{
+				Code: iris.StatusInternalServerError,
+				Text: err.Error(),
+			}
 		}
-	}
 
-	// 用户未上传图片或用户不存在
-	if res == nil {
-		return mvc.Response{
-			Code: iris.StatusBadRequest,
-			Text: "用户未上传图片或用户不存在",
+		// 跳过已封禁
+		if image.IsBan || image.AuthIsBan {
+			continue
 		}
+
+		res = append(res, image)
 	}
+	//if err := cursor.All(nil, &res); err != nil {
+	//	log.Println("用户上传的图片对象读取失败", err)
+	//	return mvc.Response{
+	//		Code: iris.StatusInternalServerError,
+	//		Text: err.Error(),
+	//	}
+	//}
 
 	return mvc.Response{
 		Code:   iris.StatusOK,
@@ -477,6 +499,7 @@ func (c *ImageController) GetSearch() mvc.Result {
 	}
 
 	log.Println("查询图片,内容:", search)
+	var res []model.Image
 
 	// 空格分割关键字
 	keywords := strings.Split(search, " ")
@@ -493,15 +516,32 @@ func (c *ImageController) GetSearch() mvc.Result {
 		}
 	}
 	defer keywordCursor.Close(nil)
-	// 生成结果
-	var tagRes []model.Image
-	if err := keywordCursor.All(nil, &tagRes); err != nil {
-		log.Println("标签查询图片读取失败", err)
-		return mvc.Response{
-			Code: iris.StatusInternalServerError,
-			Text: err.Error(),
+	// 保存结果
+	for keywordCursor.Next(nil) {
+		var image model.Image
+		if err := keywordCursor.Decode(&image); err != nil {
+			log.Println("标签查询图片对象读取失败", err)
+			return mvc.Response{
+				Code: iris.StatusInternalServerError,
+				Text: err.Error(),
+			}
 		}
+
+		// 跳过已封禁
+		if image.IsBan || image.AuthIsBan {
+			continue
+		}
+
+		res = append(res, image)
 	}
+	//var tagRes []model.Image
+	//if err := keywordCursor.All(nil, &tagRes); err != nil {
+	//	log.Println("标签查询图片读取失败", err)
+	//	return mvc.Response{
+	//		Code: iris.StatusInternalServerError,
+	//		Text: err.Error(),
+	//	}
+	//}
 
 	// 模糊匹配标题
 	titleFilter := bson.M{
@@ -519,18 +559,36 @@ func (c *ImageController) GetSearch() mvc.Result {
 		}
 	}
 	defer titleCursor.Close(nil)
-	// 生成结果
-	var titleRes []model.Image
-	if err := titleCursor.All(nil, &titleRes); err != nil {
-		log.Println("标题查询图片读取失败", err)
-		return mvc.Response{
-			Code: iris.StatusInternalServerError,
-			Text: err.Error(),
+	// 保存结果
+	for keywordCursor.Next(nil) {
+		log.Println(1)
+		var image model.Image
+		if err := keywordCursor.Decode(&image); err != nil {
+			log.Println("标题查询图片对象读取失败", err)
+			return mvc.Response{
+				Code: iris.StatusInternalServerError,
+				Text: err.Error(),
+			}
 		}
-	}
 
-	// 合并结果
-	res := append(tagRes, titleRes...)
+		// 跳过已封禁
+		if image.IsBan || image.AuthIsBan {
+			continue
+		}
+
+		res = append(res, image)
+	}
+	//var titleRes []model.Image
+	//if err := titleCursor.All(nil, &titleRes); err != nil {
+	//	log.Println("标题查询图片读取失败", err)
+	//	return mvc.Response{
+	//		Code: iris.StatusInternalServerError,
+	//		Text: err.Error(),
+	//	}
+	//}
+
+	//合并结果
+	//res := append(tagRes, titleRes...)
 	return mvc.Response{
 		Code:   iris.StatusOK,
 		Object: res,

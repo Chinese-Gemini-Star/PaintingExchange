@@ -64,7 +64,13 @@ func (c *BackController) PostUserBan(user model.User) mvc.Result {
 	prevUser.IsBan = true
 	c.Db.Where("username=?", prevUser.Username).Updates(&prevUser)
 
-	// TODO 同时封禁所有图片
+	// 其图片标记作者已封禁
+	if err := c.changAuthBan(prevUser.Username, true); err != nil {
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
 
 	return mvc.Response{
 		Code: iris.StatusNoContent,
@@ -100,7 +106,13 @@ func (c *BackController) PostUserUnban(user model.User) mvc.Result {
 	log.Println(prevUser)
 	c.Db.Where("username = ?", prevUser.Username).Select("is_ban").Updates(&prevUser)
 
-	// TODO 同时取消封禁所有图片
+	// 其图片标记作者未封禁
+	if err := c.changAuthBan(prevUser.Username, false); err != nil {
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
 
 	return mvc.Response{
 		Code: iris.StatusNoContent,
@@ -237,4 +249,16 @@ func (c *BackController) PostImageUnban(image model.Image) mvc.Result {
 	return mvc.Response{
 		Code: iris.StatusNoContent,
 	}
+}
+
+func (c *BackController) changAuthBan(username string, isBan bool) error {
+	images := c.Mg.Database("PaintingExchange").Collection("Images")
+
+	// 更新封禁信息
+	filter := bson.D{{"auth", username}}
+	update := bson.D{{"$set", bson.M{"authIsBan": isBan}}}
+	if _, err := images.UpdateMany(nil, filter, update); err != nil {
+		return err
+	}
+	return nil
 }

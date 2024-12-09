@@ -17,6 +17,10 @@ definitions:
         description: 图片作者用户名
         example: test
         type: string
+      authIsBan:
+        description: 作者是否被封禁
+        example: false
+        type: boolean
       bigURI:
         description: 大图地址
         example: assert/images/big_294eacc6-e27a-41ed-8905-9e3e254e3bd8.jpg
@@ -509,10 +513,6 @@ paths:
             items:
               $ref: '#/definitions/model.Image'
             type: array
-        "400":
-          description: 用户未上传图片或用户不存在,注意这个情况有时候不是错误,只是异常,需要进行处理
-          schema:
-            type: string
         "500":
           description: 服务器内部错误
           schema:
@@ -624,6 +624,10 @@ paths:
             $ref: '#/definitions/model.User'
         "401":
           description: 未授权错误
+          schema:
+            type: string
+        "403":
+          description: 用户被封禁
           schema:
             type: string
         "404":
