@@ -207,7 +207,7 @@ func (c *BackController) PostImageBan(image model.Image) mvc.Result {
 		Id:    prev.ID,
 		Title: prev.Title,
 		Label: prev.Label,
-		IsBan: prev.IsBan,
+		IsBan: prev.IsBan || prev.AuthIsBan,
 	}); err != nil {
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
@@ -267,7 +267,7 @@ func (c *BackController) PostImageUnban(image model.Image) mvc.Result {
 		Id:    prev.ID,
 		Title: prev.Title,
 		Label: prev.Label,
-		IsBan: prev.IsBan,
+		IsBan: prev.IsBan || prev.AuthIsBan,
 	}); err != nil {
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
@@ -288,6 +288,25 @@ func (c *BackController) changAuthBan(username string, isBan bool) error {
 	update := bson.D{{"$set", bson.M{"authIsBan": isBan}}}
 	if _, err := images.UpdateMany(nil, filter, update); err != nil {
 		return err
+	}
+
+	// 修改向量记录
+	if cursor, err := images.Find(nil, filter); err != nil {
+		return err
+	} else {
+		defer cursor.Close(nil)
+		for cursor.Next(nil) {
+			var image model.Image
+			cursor.Decode(&image)
+			if _, err := c.Algo.UpdateImage(context.Background(), &service.Image{
+				Id:    image.ID,
+				Title: image.Title,
+				Label: image.Label,
+				IsBan: image.IsBan || image.AuthIsBan,
+			}); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

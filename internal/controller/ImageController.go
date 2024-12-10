@@ -145,7 +145,7 @@ func (c *ImageController) Post(image model.Image) mvc.Result {
 		Id:    image.ID,
 		Title: image.Title,
 		Label: image.Label,
-		IsBan: image.IsBan,
+		IsBan: image.IsBan || image.AuthIsBan,
 	})
 	if err != nil {
 		log.Println("算法层gRPC调用失败", err)
@@ -306,7 +306,7 @@ func (c *ImageController) Put(image model.Image) mvc.Result {
 		Id:    image.ID,
 		Title: image.Title,
 		Label: image.Label,
-		IsBan: image.IsBan,
+		IsBan: image.IsBan || image.AuthIsBan,
 	})
 
 	return mvc.Response{
