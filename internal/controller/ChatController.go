@@ -3,6 +3,7 @@ package controller
 import (
 	"PaintingExchange/internal/model"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/kataras/iris/v12"
@@ -21,8 +22,11 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// 当前在线的websocket连接
+// online 当前在线的websocket连接
 var online = sync.Map{}
+
+// wlock 连接写互斥锁
+var wlock = sync.Map{}
 
 // HandleWebsocket websocket服务端
 // @Summary websocket服务端(无法在swagger中测试)
@@ -55,21 +59,35 @@ func HandleWebsocket(ctx iris.Context) {
 		}
 		log.Println("用户", username, "连接ws聊天室成功")
 		online.Store(username, conn)
+		wlock.Store(username, &sync.Mutex{})
 
-		// 每个用户的初始聊天记录
-		var initMess []model.Message
-		db.Raw("SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY `from` ORDER BY time DESC) AS rn FROM messages WHERE `to` = ?) AS subq WHERE rn <= 10", username).Scan(&initMess)
-		for i, _ := range initMess {
-			mess := initMess[len(initMess)-1-i] // 倒序
-			fmt.Println("发送用户初始聊天记录", mess)
-			if err := sendMessage(mess); err != nil {
-				log.Println("初始聊天记录发送失败", err)
-			}
+		// 历史聊天记录
+		//db.Raw("SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY `from` ORDER BY time DESC) AS rn FROM messages WHERE `to` = ?) AS subq WHERE rn <= 10", username).Scan(&initMess)
+		var historyFrom []model.Message
+		db.Where("`from`=?", username).Find(&historyFrom)
+		for _, mess := range historyFrom {
+			go func(mess model.Message) {
+				fmt.Println("发送用户初始聊天记录", mess)
+				if err := sendHistoryMessage(mess, username); err != nil {
+					log.Println("初始聊天记录发送失败", err)
+				}
+			}(mess)
+		}
+		var historyTo []model.Message
+		db.Where("`to`=?", username).Find(&historyTo)
+		for _, mess := range historyTo {
+			go func(mess model.Message) {
+				fmt.Println("发送用户初始聊天记录", mess)
+				if err := sendHistoryMessage(mess, username); err != nil {
+					log.Println("初始聊天记录发送失败", err)
+				}
+			}(mess)
 		}
 
 		// websocket 连接断开
 		conn.SetCloseHandler(func(code int, text string) error {
 			online.Delete(username)
+			wlock.Delete(username)
 			message := websocket.FormatCloseMessage(code, "")
 			if err := conn.WriteControl(websocket.CloseMessage, message, time.Now().Add(time.Second)); err != nil {
 				return err
@@ -113,12 +131,25 @@ func HandleWebsocket(ctx iris.Context) {
 	}
 }
 
+// sendMessage 发送聊天记录
 func sendMessage(message model.Message) error {
-	targetA, ok := online.Load(message.To)
+	return sendHistoryMessage(message, message.To)
+}
+
+// sendHistoryMessage 发送历史聊天记录
+func sendHistoryMessage(message model.Message, username string) error {
+	targetA, ok := online.Load(username)
 	if !ok {
 		return nil
 	}
+	wlockA, ok := wlock.Load(username)
+	if !ok {
+		return errors.New("用户" + username + "连接异常")
+	}
 	target := targetA.(*websocket.Conn)
+	wlock := wlockA.(*sync.Mutex)
+	wlock.Lock()
+	defer wlock.Unlock()
 	jsons, _ := json.Marshal(message)
 	err := target.WriteMessage(1, jsons)
 	return err
