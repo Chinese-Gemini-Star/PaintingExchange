@@ -96,10 +96,6 @@ func main() {
 	app.HandleDir("/assert/images", env.GetImgDir())
 	app.HandleDir("/assert/avatars", env.GetAvatarDir())
 
-	// 后台(测试用)
-	app.HandleDir("/back", "webapp/back")
-	app.HandleDir("/back/page", "webapp/back")
-
 	// 绑定依赖和路由
 	mvc.Configure(app, func(application *mvc.Application) {
 		application.Register(db)

@@ -28,6 +28,13 @@ services:
     volumes:
       - ./chromadb:/app/chromadb
 
+  page:
+    image: painting_exchange_page
+    container_name: paint_page
+    restart: always
+    ports:
+      - "80:80"
+
   app:
     build:
       context: .
