@@ -14,6 +14,8 @@ import (
 	"github.com/kataras/iris/v12/mvc"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
@@ -76,6 +78,15 @@ func main() {
 		log.Fatalln("mongoDB数据库连接失败", err)
 	}
 
+	// 算法端连接
+	var algo service.SearchServiceClient
+	if conn, err := grpc.NewClient(fmt.Sprintf("%s:8881", env.GetEnv("algoHost", "localhost")), grpc.WithTransportCredentials(insecure.NewCredentials())); err != nil {
+		log.Fatalln("算法层gRPC连接失败", err)
+	} else {
+		defer conn.Close()
+		algo = service.NewSearchServiceClient(conn)
+	}
+
 	// 创建图片缓存目录并绑定路由
 	err = os.MkdirAll(env.GetImgDir(), os.ModePerm)
 	err = os.MkdirAll(env.GetAvatarDir(), os.ModePerm)
@@ -85,7 +96,7 @@ func main() {
 	app.HandleDir("/assert/images", env.GetImgDir())
 	app.HandleDir("/assert/avatars", env.GetAvatarDir())
 
-	// 后台
+	// 后台(测试用)
 	app.HandleDir("/back", "webapp/back")
 	app.HandleDir("/back/page", "webapp/back")
 
@@ -93,6 +104,7 @@ func main() {
 	mvc.Configure(app, func(application *mvc.Application) {
 		application.Register(db)
 		application.Register(mg)
+		application.Register(algo)
 		application.Party("/").Handle(new(controller.AuthController))
 		application.Party("/user", service.JWTMiddleware).Handle(new(controller.UserController))
 		application.Party("/image", service.JWTMiddleware).Handle(new(controller.ImageController))

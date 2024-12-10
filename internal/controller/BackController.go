@@ -2,6 +2,8 @@ package controller
 
 import (
 	"PaintingExchange/internal/model"
+	"PaintingExchange/internal/service"
+	"context"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,9 +13,10 @@ import (
 )
 
 type BackController struct {
-	Ctx iris.Context
-	Db  *gorm.DB
-	Mg  *mongo.Client
+	Ctx  iris.Context
+	Db   *gorm.DB
+	Mg   *mongo.Client
+	Algo service.SearchServiceClient
 }
 
 // GetUser 获取所有用户
@@ -199,6 +202,19 @@ func (c *BackController) PostImageBan(image model.Image) mvc.Result {
 		}
 	}
 
+	// 修改向量记录
+	if _, err := c.Algo.UpdateImage(context.Background(), &service.Image{
+		Id:    prev.ID,
+		Title: prev.Title,
+		Label: prev.Label,
+		IsBan: prev.IsBan,
+	}); err != nil {
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+
 	return mvc.Response{
 		Code: iris.StatusNoContent,
 	}
@@ -240,6 +256,19 @@ func (c *BackController) PostImageUnban(image model.Image) mvc.Result {
 	update := bson.D{{"$set", prev}}
 	if _, err := images.UpdateOne(nil, filter, update); err != nil {
 		log.Println("图片", image.ID, "封禁信息写入失败", err)
+		return mvc.Response{
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
+		}
+	}
+
+	// 修改向量记录
+	if _, err := c.Algo.UpdateImage(context.Background(), &service.Image{
+		Id:    prev.ID,
+		Title: prev.Title,
+		Label: prev.Label,
+		IsBan: prev.IsBan,
+	}); err != nil {
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
 			Text: err.Error(),

@@ -19,6 +19,15 @@ services:
     ports:
       - "27017:27017"
 
+  algo:
+    image: geministar/painting_exchange_algo
+    container_name: paint_algo
+    restart: always
+    ports:
+      - "8881:8881"
+    volumes:
+      - ./chromadb:/app/chromadb
+
   app:
     build:
       context: .
@@ -27,9 +36,11 @@ services:
     depends_on:
       - mysql
       - mongodb
+      - algo
     environment:
       dbHost: mysql
       mgHost: mongodb
+      algoHost: algo
     restart: always
     volumes:
       - ./assert/:/app/assert/

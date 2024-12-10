@@ -4,6 +4,7 @@ import (
 	"PaintingExchange/internal/env"
 	"PaintingExchange/internal/model"
 	"PaintingExchange/internal/service"
+	"context"
 	"github.com/google/uuid"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
@@ -11,19 +12,23 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gocv.io/x/gocv"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
 // ImageController 用户相关操作控制器
 type ImageController struct {
-	Ctx iris.Context
-	Db  *gorm.DB
-	Mg  *mongo.Client
+	Ctx  iris.Context
+	Db   *gorm.DB
+	Mg   *mongo.Client
+	Algo service.SearchServiceClient
 }
 
 // GetBy 获取图片对象
@@ -132,12 +137,27 @@ func (c *ImageController) Post(image model.Image) mvc.Result {
 			Code: iris.StatusInternalServerError,
 			Text: err.Error(),
 		}
-	} else {
-		log.Println("图片创建成功")
+	}
+	log.Println("图片创建成功")
+
+	// 调用算法层向量化
+	_, err = c.Algo.CreateImage(context.Background(), &service.Image{
+		Id:    image.ID,
+		Title: image.Title,
+		Label: image.Label,
+		IsBan: image.IsBan,
+	})
+	if err != nil {
+		log.Println("算法层gRPC调用失败", err)
 		return mvc.Response{
-			Code:   iris.StatusCreated,
-			Object: image,
+			Code: iris.StatusInternalServerError,
+			Text: err.Error(),
 		}
+	}
+
+	return mvc.Response{
+		Code:   iris.StatusCreated,
+		Object: image,
 	}
 }
 
@@ -278,13 +298,22 @@ func (c *ImageController) Put(image model.Image) mvc.Result {
 			Code: iris.StatusInternalServerError,
 			Text: err.Error(),
 		}
-	} else {
-		log.Println("图片更新成功")
-		return mvc.Response{
-			Code:   iris.StatusCreated,
-			Object: prevImage,
-		}
 	}
+	log.Println("图片更新成功")
+
+	// 调用算法层向量化
+	c.Algo.UpdateImage(context.Background(), &service.Image{
+		Id:    image.ID,
+		Title: image.Title,
+		Label: image.Label,
+		IsBan: image.IsBan,
+	})
+
+	return mvc.Response{
+		Code:   iris.StatusCreated,
+		Object: prevImage,
+	}
+
 }
 
 // DeleteBy 删除图片
@@ -343,12 +372,21 @@ func (c *ImageController) DeleteBy(imageID string) mvc.Result {
 			Code: iris.StatusInternalServerError,
 			Text: err.Error(),
 		}
-	} else {
-		log.Println("图片删除成功")
-		return mvc.Response{
-			Code: iris.StatusNoContent,
-		}
 	}
+
+	// 调用算法层删除向量
+	c.Algo.DeleteImage(context.Background(), &service.Image{
+		Id:    imageID,
+		Title: "",
+		Label: nil,
+		IsBan: false,
+	})
+
+	log.Println("图片删除成功")
+	return mvc.Response{
+		Code: iris.StatusNoContent,
+	}
+
 }
 
 // GetNewest 获取最新9个图片
@@ -499,96 +537,151 @@ func (c *ImageController) GetSearch() mvc.Result {
 	}
 
 	log.Println("查询图片,内容:", search)
+
+	// 并发查询
 	var res []model.Image
+	var mu sync.Mutex
+	var g errgroup.Group
+
+	// 智能检索
+	g.Go(func() error {
+		// 调用算法层向量化检索
+		aiRes, err := c.Algo.SearchImage(context.Background(), &service.Search{
+			Search: search,
+		})
+		if err != nil {
+			log.Println("算法层gRPC调用失败", err)
+			return err
+		}
+		ids := aiRes.ImageIds
+		if ids == nil {
+			return nil
+		}
+
+		// 查询图片对象
+		filter := bson.D{{"_id", bson.D{{"$in", ids}}}}
+		cursor, err := images.Find(nil, filter)
+		if err != nil {
+			log.Println("id查询图片失败", err)
+			return err
+		}
+
+		// 读取图片对象
+		for cursor.Next(nil) {
+			var image model.Image
+			if err := cursor.Decode(&image); err != nil {
+				log.Println("id读取图片失败", err)
+				return err
+			}
+
+			// 跳过已封禁
+			if image.IsBan || image.AuthIsBan {
+				continue
+			}
+
+			mu.Lock()
+			res = append(res, image)
+			mu.Unlock()
+		}
+		return nil
+	})
 
 	// 空格分割关键字
 	keywords := strings.Split(search, " ")
 	// 匹配关键字至标签
-	keyWordsFilter := bson.M{
-		"label": bson.M{"$in": keywords},
-	}
-	keywordCursor, err := images.Find(nil, keyWordsFilter)
-	if err != nil {
-		log.Println("标签查询图片失败")
-		return mvc.Response{
-			Code: iris.StatusInternalServerError,
-			Text: err.Error(),
+	g.Go(func() error {
+		// 查询标签
+		filter := bson.M{
+			"label": bson.M{"$in": keywords},
 		}
-	}
-	defer keywordCursor.Close(nil)
-	// 保存结果
-	for keywordCursor.Next(nil) {
-		var image model.Image
-		if err := keywordCursor.Decode(&image); err != nil {
-			log.Println("标签查询图片对象读取失败", err)
-			return mvc.Response{
-				Code: iris.StatusInternalServerError,
-				Text: err.Error(),
+		cursor, err := images.Find(nil, filter)
+		if err != nil {
+			log.Println("标签查询图片失败")
+			return err
+		}
+		defer cursor.Close(nil)
+
+		// 保存结果
+		for cursor.Next(nil) {
+			var image model.Image
+			if err := cursor.Decode(&image); err != nil {
+				log.Println("标签查询图片对象读取失败", err)
+				return err
 			}
+
+			// 跳过已封禁
+			if image.IsBan || image.AuthIsBan {
+				continue
+			}
+
+			mu.Lock()
+			res = append(res, image)
+			mu.Unlock()
 		}
 
-		// 跳过已封禁
-		if image.IsBan || image.AuthIsBan {
-			continue
-		}
-
-		res = append(res, image)
-	}
-	//var tagRes []model.Image
-	//if err := keywordCursor.All(nil, &tagRes); err != nil {
-	//	log.Println("标签查询图片读取失败", err)
-	//	return mvc.Response{
-	//		Code: iris.StatusInternalServerError,
-	//		Text: err.Error(),
-	//	}
-	//}
-
+		//var tagRes []model.Image
+		//if err := cursor.All(nil, &tagRes); err != nil {
+		//	log.Println("标签查询图片读取失败", err)
+		//	return err
+		//}
+		return nil
+	})
 	// 模糊匹配标题
-	titleFilter := bson.M{
-		"title": bson.M{
-			"$regex":   search, // 模糊匹配
-			"$options": "i",    // 忽略大小写
-		},
-	}
-	titleCursor, err := images.Find(nil, titleFilter)
-	if err != nil {
-		log.Println("标题查询图片失败", err)
+	g.Go(func() error {
+		// 查询标题
+		filter := bson.M{
+			"title": bson.M{
+				"$regex":   search, // 模糊匹配
+				"$options": "i",    // 忽略大小写
+			},
+		}
+		cursor, err := images.Find(nil, filter)
+		if err != nil {
+			log.Println("标题查询图片失败", err)
+			return err
+		}
+		defer cursor.Close(nil)
+
+		// 保存结果
+		for cursor.Next(nil) {
+			log.Println(1)
+			var image model.Image
+			if err := cursor.Decode(&image); err != nil {
+				log.Println("标题查询图片对象读取失败", err)
+				return err
+			}
+
+			// 跳过已封禁
+			if image.IsBan || image.AuthIsBan {
+				continue
+			}
+
+			mu.Lock()
+			res = append(res, image)
+			mu.Unlock()
+		}
+
+		//var titleRes []model.Image
+		//if err := cursor.All(nil, &titleRes); err != nil {
+		//	log.Println("标题查询图片读取失败", err)
+		//	return mvc.Response{
+		//		Code: iris.StatusInternalServerError,
+		//		Text: err.Error(),
+		//	}
+		//}
+		return nil
+	})
+
+	//res := append(tagRes, titleRes...)
+	if err := g.Wait(); err != nil {
 		return mvc.Response{
 			Code: iris.StatusInternalServerError,
 			Text: err.Error(),
 		}
 	}
-	defer titleCursor.Close(nil)
-	// 保存结果
-	for keywordCursor.Next(nil) {
-		log.Println(1)
-		var image model.Image
-		if err := keywordCursor.Decode(&image); err != nil {
-			log.Println("标题查询图片对象读取失败", err)
-			return mvc.Response{
-				Code: iris.StatusInternalServerError,
-				Text: err.Error(),
-			}
-		}
+	// 按上传时间降序去重
+	res = uniqueSortedImages(res)
 
-		// 跳过已封禁
-		if image.IsBan || image.AuthIsBan {
-			continue
-		}
-
-		res = append(res, image)
-	}
-	//var titleRes []model.Image
-	//if err := titleCursor.All(nil, &titleRes); err != nil {
-	//	log.Println("标题查询图片读取失败", err)
-	//	return mvc.Response{
-	//		Code: iris.StatusInternalServerError,
-	//		Text: err.Error(),
-	//	}
-	//}
-
-	//合并结果
-	//res := append(tagRes, titleRes...)
 	return mvc.Response{
 		Code:   iris.StatusOK,
 		Object: res,
@@ -630,4 +723,26 @@ func checkImageFile(filePath string, id string, size string) bool {
 	}
 
 	return true
+}
+
+// uniqueSortedImages 图片切片排序并去重
+func uniqueSortedImages(images []model.Image) []model.Image {
+	if len(images) <= 1 {
+		return images
+	}
+
+	// 排序
+	sort.Slice(images, func(i, j int) bool {
+		return images[i].CreatedAt.After(images[j].CreatedAt)
+	})
+
+	// 去重
+	res := []model.Image{images[0]}
+	for i := 1; i < len(images); i++ {
+		if images[i].ID != images[i-1].ID {
+			res = append(res, images[i])
+		}
+	}
+
+	return res
 }

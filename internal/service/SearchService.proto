@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package service.medicons;
+
+option go_package = "internal/service";
+
+service SearchService {
+  rpc CreateImage(Image) returns (google.protobuf.Empty){}
+  rpc UpdateImage(Image) returns (google.protobuf.Empty){}
+  rpc DeleteImage(Image) returns (google.protobuf.Empty){}
+  rpc SearchImage(Search) returns (Result){}
+}
+
+message Image {
+  string id=1;
+  string title = 2;
+  repeated string label = 3;
+  bool isBan = 4;
+}
+
+message Search {
+  string search=1;
+}
+
+message Result {
+  repeated string imageIds=1;
+}
