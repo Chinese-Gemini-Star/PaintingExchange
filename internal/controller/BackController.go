@@ -296,16 +296,18 @@ func (c *BackController) changAuthBan(username string, isBan bool) error {
 	} else {
 		defer cursor.Close(nil)
 		for cursor.Next(nil) {
-			var image model.Image
-			cursor.Decode(&image)
-			if _, err := c.Algo.UpdateImage(context.Background(), &service.Image{
-				Id:    image.ID,
-				Title: image.Title,
-				Label: image.Label,
-				IsBan: image.IsBan || image.AuthIsBan,
-			}); err != nil {
-				return err
-			}
+			// 协程提速
+			go func(cursor *mongo.Cursor) {
+				var image model.Image
+				cursor.Decode(&image)
+				if _, err := c.Algo.UpdateImage(context.Background(), &service.Image{
+					Id:    image.ID,
+					Title: image.Title,
+					Label: image.Label,
+					IsBan: image.IsBan || image.AuthIsBan,
+				}); err != nil {
+				}
+			}(cursor)
 		}
 	}
 	return nil
