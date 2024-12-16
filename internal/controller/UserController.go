@@ -3,10 +3,11 @@ package controller
 import (
 	"PaintingExchange/internal/env"
 	"PaintingExchange/internal/model"
-	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"io"
@@ -19,6 +20,7 @@ import (
 type UserController struct {
 	Ctx iris.Context
 	Db  *gorm.DB
+	Mg  *mongo.Client
 }
 
 // GetBy 获取指定用户名的用户对象(无密码)
@@ -233,6 +235,7 @@ func (c *UserController) GetStar() mvc.Result {
 // @Router /user/star [post]
 // @Security BearerAuth
 func (c *UserController) PostStar(star model.Star) mvc.Result {
+	images := c.Mg.Database("PaintingExchange").Collection("Images")
 	star.ID = 0
 
 	// 获取用户名
@@ -247,33 +250,49 @@ func (c *UserController) PostStar(star model.Star) mvc.Result {
 	log.Println("用户", loginUserName, "收藏图片", star.ImageID)
 	star.Username = loginUserName
 
-	// 验证图片是否存在
-	resp, err := resty.New().R().SetHeader("Authorization", loginUser.(iris.SimpleUser).Authorization).Get("http://localhost:8880/image/" + star.ImageID)
-	if err != nil {
-		log.Println("请求图片信息失败", err)
-		return mvc.Response{
-			Code: iris.StatusInternalServerError,
-			Text: iris.StatusText(iris.StatusInternalServerError),
-		}
-	}
-	if resp.StatusCode() == 400 {
-		log.Println("图片不存在")
+	// 验证是否已收藏
+	var count int64
+	if c.Db.Model(&model.Star{}).Where("username=? AND image_id=?", star.Username, star.ImageID).Count(&count); count >= 1 {
+		log.Println("重复收藏")
 		return mvc.Response{
 			Code: iris.StatusBadRequest,
-			Text: "收藏的图片不存在",
-		}
-	} else if resp.StatusCode() == 403 {
-		log.Println("图片被封禁")
-		return mvc.Response{
-			Code: iris.StatusForbidden,
-			Text: "收藏的图片被封禁",
+			Text: "已收藏,请勿重复收藏",
 		}
 	}
 
-	// 记录收藏信息
-	c.Db.Create(&star)
-	return mvc.Response{
-		Code: iris.StatusNoContent,
+	// 验证图片是否存在
+	filter := bson.D{{"_id", star.ImageID}}
+	if res := images.FindOne(nil, filter); res.Err() != nil {
+		log.Println("图片", star.ImageID, "查找失败", res.Err().Error())
+		return mvc.Response{
+			Code: iris.StatusBadRequest,
+			Text: "图片不存在",
+		}
+	} else {
+		var image model.Image
+		res.Decode(&image)
+
+		// 验证图片是否被封
+		if image.IsBan || image.AuthIsBan {
+			return mvc.Response{
+				Code: iris.StatusForbidden,
+				Text: "图片被封禁",
+			}
+		}
+
+		// 记录收藏信息
+		c.Db.Create(&star)
+		update := bson.M{"$inc": bson.M{"like": 1}}
+		if _, err := images.UpdateOne(nil, filter, update); err != nil {
+			return mvc.Response{
+				Code: iris.StatusInternalServerError,
+				Text: err.Error(),
+			}
+		}
+
+		return mvc.Response{
+			Code: iris.StatusNoContent,
+		}
 	}
 }
 
@@ -290,6 +309,8 @@ func (c *UserController) PostStar(star model.Star) mvc.Result {
 // @Router /user/star [delete]
 // @Security BearerAuth
 func (c *UserController) DeleteStar(star model.Star) mvc.Result {
+	images := c.Mg.Database("PaintingExchange").Collection("Images")
+
 	// 获取用户名
 	loginUser, err := c.Ctx.User().GetRaw()
 	if err != nil {
@@ -302,17 +323,37 @@ func (c *UserController) DeleteStar(star model.Star) mvc.Result {
 	log.Println("用户", loginUserName, "取消收藏", star.ImageID)
 	star.Username = loginUserName
 
-	// 从数据库中删除
-	star.ID = 0
-	if c.Db.Where(&star).Delete(&star).RowsAffected == 0 {
-		log.Println("收藏记录不存在")
+	// 验证图片是否存在
+	filter := bson.D{{"_id", star.ImageID}}
+	if res := images.FindOne(nil, filter); res.Err() != nil {
+		log.Println("图片", star.ImageID, "查找失败", res.Err().Error())
 		return mvc.Response{
 			Code: iris.StatusBadRequest,
-			Text: "收藏记录不存在",
+			Text: "图片不存在",
 		}
-	}
+	} else {
+		var image model.Image
+		res.Decode(&image)
 
-	return mvc.Response{
-		Code: iris.StatusNoContent,
+		// 从数据库中删除
+		star.ID = 0
+		if c.Db.Where(&star).Delete(&star).RowsAffected == 0 {
+			log.Println("收藏记录不存在")
+			return mvc.Response{
+				Code: iris.StatusBadRequest,
+				Text: "收藏记录不存在",
+			}
+		}
+		update := bson.M{"$inc": bson.M{"like": -1}}
+		if _, err := images.UpdateOne(nil, filter, update); err != nil {
+			return mvc.Response{
+				Code: iris.StatusInternalServerError,
+				Text: err.Error(),
+			}
+		}
+
+		return mvc.Response{
+			Code: iris.StatusNoContent,
+		}
 	}
 }
