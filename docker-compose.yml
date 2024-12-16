@@ -28,17 +28,12 @@ services:
     volumes:
       - ./chromadb:/app/chromadb
 
-  page:
-    image: painting_exchange_page
-    container_name: paint_page
-    restart: always
-    ports:
-      - "80:80"
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: geministar/painting_exchange_app
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
     container_name: paint_app
     depends_on:
       - mysql
@@ -53,3 +48,12 @@ services:
       - ./assert/:/app/assert/
     ports:
       - "8880:8880"
+
+  page:
+    image: geministar/painting_exchange_page
+    container_name: paint_page
+    depends_on:
+      - app
+    restart: always
+    ports:
+      - "80:80"

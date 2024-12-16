@@ -7,7 +7,6 @@ EXPOSE 8880
 WORKDIR /app
 
 COPY PaintingExchange .
-COPY webapp/ webapp/
 
 VOLUME ["./assert", "/app/assert"]
 
